@@ -5,12 +5,13 @@ library(tidyverse)
 library(plyr)
 library(jsonlite)
 library(doMC)
+library(githubr)
 registerDoMC(detectCores())
 
 
 ##### Global Variables #### 
-PYTHON_ENV <- <insert virtual environment>
-MPOWER_TABLE <- "syn10308918"
+PYTHON_ENV <- "~/Documents/SageBionetworks/environments/test_venv" ## insert python virtualenv here
+TABLE_SRC <- "syn10308918"
 COLUMNS <- c("deviceMotion_walking_outbound.json.items", 
              "deviceMotion_walking_return.json.items")
 OUTPUT_FILE <- "pdkit_rotation_walking_features_table_V1.tsv"
@@ -32,7 +33,7 @@ get_pdkit_rotation_features <- function(data){
     return(features)
 }
 extract.walk.table <- function(){
-    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 20", MPOWER_TABLE))
+    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 20", TABLE_SRC))
     mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
         dplyr::mutate(
             deviceMotion_walking_outbound.json.items = as.character(deviceMotion_walking_outbound.json.items),
@@ -104,7 +105,8 @@ main <- function(){
     
     f <- sc$File(OUTPUT_FILE, PARENT_ID)
     f$annotations <- list(features='PDKit and Rotation')
-    syn$store(f, activity = sc$Activity(used = c(MPOWER_TABLE)))
+    syn$store(f, activity = sc$Activity(used = c(TABLE_SRC)))
+    unlink(OUTPUT_FILE)
 }
 
 main()
