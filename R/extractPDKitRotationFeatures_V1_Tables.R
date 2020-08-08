@@ -41,8 +41,11 @@ extract.walk.table <- function(){
     mapped.walking.json.files <- syn$downloadTableColumns(mpower.tbl.entity, COLUMNS) %>% data.frame()
     mapped.walking.json.files <- data.frame(
         fileHandleId = names(mapped.walking.json.files) %>% 
-            substring(., first = 2),
-        jsonPath = as.character(mapped.walking.json.files))
+            substring(., first = 2) %>% 
+            as.character(.),
+        jsonPath = plyr::llply(names(mapped.walking.json.files), 
+                               function(x,mapped.walking.json.files){mapped.walking.json.files[x][[1]]}, 
+                               mapped.walking.json.files) %>% unlist() %>% as.character(.))
     mpower.tbl.data <- mpower.tbl.data %>% 
         dplyr::left_join(., mapped.walking.json.files, 
                          by = c("deviceMotion_walking_outbound.json.items" = "fileHandleId")) %>%
