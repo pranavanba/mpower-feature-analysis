@@ -26,8 +26,8 @@ PARENT_ID <- "syn22294858"
 githubr::setGithubToken(readLines(GIT_PATH))
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 SCRIPT_NAME <- "extractPDKitRotationFeatures_V1_Tables.R"
-GIT_URL <- githubr::getPermlink(GIT_REPO, 
-                       repositoryPath = file.path('R',  SCRIPT_NAME))
+GIT_URL <- githubr::getPermlink("arytontediarjo/feature_extraction_codes", 
+                                repositoryPath = 'R/extractPDKitRotationFeatures_V1_Tables.R')
 
 ####################################
 #### instantiate python objects #### 
@@ -136,7 +136,8 @@ main <- function(){
     # save to synapse
     f <- sc$File(OUTPUT_FILE, PARENT_ID)
     f$annotations <- list(features='PDKit and Rotation')
-    syn$store(f, activity = sc$Activity(used = c(TABLE_SRC)))
+    syn$store(f, activity = sc$Activity(used = c(TABLE_SRC),
+                                        executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
 main()
