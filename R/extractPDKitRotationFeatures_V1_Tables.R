@@ -33,7 +33,7 @@ get_pdkit_rotation_features <- function(data){
     return(features)
 }
 extract.walk.table <- function(){
-    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 20", TABLE_SRC))
+    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 1000", TABLE_SRC))
     mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
         dplyr::mutate(
             deviceMotion_walking_outbound.json.items = as.character(deviceMotion_walking_outbound.json.items),
@@ -43,9 +43,10 @@ extract.walk.table <- function(){
         fileHandleId = names(mapped.walking.json.files) %>% 
             substring(., first = 2) %>% 
             as.character(.),
-        jsonPath = plyr::llply(names(mapped.walking.json.files), 
-                               function(x,mapped.walking.json.files){mapped.walking.json.files[x][[1]]}, 
-                               mapped.walking.json.files) %>% unlist() %>% as.character(.))
+        jsonPath = as.character(
+            plyr::llply(names(mapped.walking.json.files), 
+                        function(x,mapped.walking.json.files){mapped.walking.json.files[x][[1]]}, 
+                        mapped.walking.json.files) %>% unlist()))
     mpower.tbl.data <- mpower.tbl.data %>% 
         dplyr::left_join(., mapped.walking.json.files, 
                          by = c("deviceMotion_walking_outbound.json.items" = "fileHandleId")) %>%
@@ -55,20 +56,21 @@ extract.walk.table <- function(){
     return(mpower.tbl.data)
 }
 shape.time.series.from.json <- function(x){
+    print(x)
     ts <- fromJSON(x)
     accel.ts <- ts %>% 
         dplyr::select(matches("userAcceleration|timestamp")) %>%
-        mutate(timestamp = timestamp - .$timestamp[1],
-               sensorType = "userAcceleration") %>% 
+        dplyr::mutate(timestamp = timestamp - .$timestamp[1],
+               sensorType = "userAcceleration") %>%
         flatten() %>%
         dplyr::rename(
-            t = timestamp, 
-            x = userAcceleration.x, 
-            y = userAcceleration.y,
-            z = userAcceleration.z)
+            "t" = "timestamp", 
+            "x" = "userAcceleration.x", 
+            "y" = "userAcceleration.y",
+            "z" = "userAcceleration.z")
     rotation.ts <- ts %>% 
         dplyr::select(matches("rotationRate|timestamp")) %>%
-        mutate(timestamp = timestamp - .$timestamp[1],
+        dplyr::mutate(timestamp = timestamp - .$timestamp[1],
                sensorType = "rotationRate") %>% 
         flatten() %>%
         dplyr::rename(
@@ -88,9 +90,11 @@ featurize.table <- function(data, col){
                                   ts <- shape.time.series.from.json(row[[col]])
                                   features.list <- mhealthtools:::sensor_features(
                                       ts, models = function(x){get_pdkit_rotation_features(x)})
-                                  return(features.list$model_features[[1]])
+                                  return(features.list$model_features[[1]] %>% 
+                                             dplyr::mutate(error = as.character(error)))
                               },error = function(err){
                                   print(paste0('Unable to process ', row[[col]]))
+                                  return(tibble(error = "NA unable to process"))
                                   stop(err)})})
     return(walkFeatures)
 }
