@@ -51,7 +51,7 @@ get_pdkit_rotation_features <- function(data){
 extract.walk.table <- function(){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 1000", TABLE_SRC))
+    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s", TABLE_SRC))
     mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
         dplyr::mutate(
             deviceMotion_walking_outbound.json.items = as.character(deviceMotion_walking_outbound.json.items),
