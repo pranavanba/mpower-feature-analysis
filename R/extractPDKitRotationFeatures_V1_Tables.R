@@ -26,8 +26,9 @@ PARENT_ID <- "syn22294858"
 githubr::setGithubToken(readLines(GIT_PATH))
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 SCRIPT_NAME <- "extractPDKitRotationFeatures_V1_Tables.R"
-GIT_URL <- githubr::getPermlink("arytontediarjo/feature_extraction_codes", 
-                                repositoryPath = 'R/extractPDKitRotationFeatures_V1_Tables.R')
+GIT_URL <- githubr::getPermlink(
+    "arytontediarjo/feature_extraction_codes", 
+    repositoryPath = 'R/extractPDKitRotationFeatures_V1_Tables.R')
 
 ####################################
 #### instantiate python objects #### 
@@ -42,8 +43,10 @@ syn <- sc$login()
 ###########################
 get_pdkit_rotation_features <- function(data){
     #' Function to wrap pdkit rotation features in mHealthtools
-    accel.data <- data %>% filter(sensorType == "userAcceleration")
-    gyro.data <- data %>% filter(sensorType == "rotationRate")
+    accel.data <- data %>% 
+        filter(sensorType == "userAcceleration")
+    gyro.data <- data %>% 
+        filter(sensorType == "rotationRate")
     features <- gait.feature.py.obj$run_pipeline(accel.data, gyro.data)
     return(features)
 }
@@ -54,10 +57,13 @@ extract.walk.table <- function(){
     mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s", TABLE_SRC))
     mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
         dplyr::mutate(
-            deviceMotion_walking_outbound.json.items = as.character(deviceMotion_walking_outbound.json.items),
-            deviceMotion_walking_return.json.items = as.character(deviceMotion_walking_return.json.items)) %>%
+            deviceMotion_walking_outbound.json.items = as.character(
+                deviceMotion_walking_outbound.json.items),
+            deviceMotion_walking_return.json.items = as.character(
+                deviceMotion_walking_return.json.items)) %>%
         dplyr::mutate(medTimepoint = .$medTimepoint%>% unlist())
-    mapped.walking.json.files <- syn$downloadTableColumns(mpower.tbl.entity, COLUMNS) %>% data.frame()
+    mapped.walking.json.files <- syn$downloadTableColumns(mpower.tbl.entity, COLUMNS) %>% 
+        data.frame()
     mapped.walking.json.files <- data.frame(
         fileHandleId = names(mapped.walking.json.files) %>% 
             substring(., first = 2) %>% 
@@ -68,7 +74,8 @@ extract.walk.table <- function(){
                          by = c("deviceMotion_walking_outbound.json.items" = "fileHandleId")) %>%
         dplyr::left_join(., mapped.walking.json.files,
                          by = c("deviceMotion_walking_return.json.items" = "fileHandleId")) %>%
-        dplyr::rename(walk.outbound.json=jsonPath.x, walk.return.json=jsonPath.y)
+        dplyr::rename(walk.outbound.json=jsonPath.x, 
+                      walk.return.json=jsonPath.y)
     return(mpower.tbl.data)
 }
 
