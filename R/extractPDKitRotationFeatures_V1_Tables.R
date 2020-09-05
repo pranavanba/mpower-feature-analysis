@@ -1,7 +1,6 @@
 #' This script is used to query walking data
 #' using pdkit rotation features using reticulate 
 #' virtual environment
-
 library(mhealthtools)
 library(reticulate)
 library(tidyverse)
@@ -14,7 +13,7 @@ registerDoMC(detectCores())
 ##############################
 ##### Global Variables #######
 ##############################
-PYTHON_ENV <- "~/env" ## insert python virtualenv here
+PYTHON_ENV <- "~/Documents/SageBionetworks/environments/test_venv" ## insert python virtualenv here
 GIT_PATH <- "~/git_token.txt"
 TABLE_SRC <- "syn10308918"
 COLUMNS <- c("deviceMotion_walking_outbound.json.items", 
@@ -54,7 +53,7 @@ get_pdkit_rotation_features <- function(data){
 extract.walk.table <- function(){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s", TABLE_SRC))
+    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 5", TABLE_SRC))
     mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
         dplyr::mutate(
             deviceMotion_walking_outbound.json.items = as.character(
