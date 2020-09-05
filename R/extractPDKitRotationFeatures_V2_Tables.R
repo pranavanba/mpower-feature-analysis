@@ -57,15 +57,19 @@ OUTPUT.FILE$agg_walk_features <- "aggregated_pdkit_rotation_walking_features_tab
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get.table <- function(synID, column){
-    tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s", synID)) 
+    tbl.entity <- syn$tableQuery(paste(sprintf("SELECT * FROM %s", WALK_TBL), 
+                                       "where phoneInfo LIKE '%iOS%' LIMIT 300"))
     mapped.json.files <- syn$downloadTableColumns(tbl.entity, columns = c(column))
     mapped.json.files <- tibble(fileHandleId = names(mapped.json.files),
                                 jsonPath = as.character(mapped.json.files))
     joined.df <- tbl.entity$asDataFrame() %>% 
         dplyr::mutate(fileHandleId = as.character(.[[column]])) %>% 
         dplyr::left_join(mapped.json.files, by = c("fileHandleId")) %>%
-        dplyr::select("participantID", 
+        dplyr::select("recordId",
+                      "healthCode",
                       "createdOn", 
+                      "appVersion",
+                      "phoneInfo",
                       "fileHandleId", 
                       "jsonPath")
     return(joined.df)
@@ -95,7 +99,13 @@ featurize.walk.data <- function(ts){
 process.walk.data <- function(data){
     features <- plyr::ddply(
         .data = data,
-        .variables = c("participantID", "createdOn", "jsonPath"),
+        .variables = c("recordId",
+                       "healthCode",
+                       "createdOn", 
+                       "appVersion",
+                       "phoneInfo",
+                       "fileHandleId", 
+                       "jsonPath"),
         .parallel = TRUE,
         .fun = function(row){
             tryCatch({
@@ -115,33 +125,29 @@ main <- function(){
     raw.data <- get.table(WALK_TBL, "walk_motion.json") %>% 
         process.walk.data() %>% 
         dplyr::mutate(createdOn = as.POSIXct(
-            createdOn/1000, origin="1970-01-01")) %>% 
-        dplyr::mutate(yz_symmetry = y_symmetry * z_symmetry)
+            createdOn/1000, origin="1970-01-01")) 
     
     #' get aggregated data
     agg.data <- list()
     agg.data$median <- raw.data %>%
-        dplyr::group_by(participantID, createdOn) %>%
+        dplyr::group_by(healthCode) %>%
         dplyr::select(-c("window_end", "window_start", "window_end")) %>%
         dplyr::summarise_if(is.numeric, .funs = c(median), na.rm = TRUE) %>%
         dplyr::rename_if(is.numeric, .funs = function(x) paste0(x, "_med"))
     agg.data$iqr <- raw.data %>%
-        dplyr::group_by(participantID, createdOn) %>%
+        dplyr::group_by(healthCode) %>%
         dplyr::select(-c("window_end", "window_start", "window_end")) %>%
         dplyr::summarise_if(is.numeric, .funs = c(IQR), na.rm = TRUE) %>%
         dplyr::rename_if(is.numeric, .funs = function(x) paste0(x, "_iqr"))
     agg.data <- purrr::reduce(
         agg.data, dplyr::inner_join, 
-        by = c("participantID", "createdOn"))
+        by = c("healthCode"))
     
     #' map results and store it into synapse
     result.list <- list(raw_walk_features = raw.data,
-                        agg_walk_features = agg.data,
-                        chosen_agg_walk_features = agg.data %>% dplyr::select(
-                            participantID,  createdOn, starts_with("yz")))
+                        agg_walk_features = agg.data)
     purrr::map(names(result.list), function(data){
-        write.to.table <- result.list[[data]] %>% 
-            dplyr::rename(participant_id = participantID, date = createdOn) %>%
+        write.to.table <- result.list[[data]]  %>%
             write.table(., OUTPUT.FILE[[data]], sep = "\t", row.names=F, quote=F)
         f <- sc$File(OUTPUT.FILE[[data]], OUTPUT.PARENT.ID)
         syn$store(f, activity = sc$Activity(

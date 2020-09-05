@@ -20,6 +20,7 @@ RUN python3 -m venv ~/env\
     && . ~/env/bin/activate \
     && pip install wheel\
     && pip install psutil\
+    && pip install pyyaml\
     && pip install synapseclient\
     && pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
 
