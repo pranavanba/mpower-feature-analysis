@@ -58,7 +58,7 @@ OUTPUT.FILE$agg_walk_features <- "aggregated_pdkit_rotation_walking_features_tab
 #' @returns joined table of filepath and filehandleID
 get.table <- function(synID, column){
     tbl.entity <- syn$tableQuery(paste(sprintf("SELECT * FROM %s", WALK_TBL), 
-                                       "where phoneInfo LIKE '%iOS%' LIMIT 300"))
+                                       "where phoneInfo LIKE '%iOS%'"))
     mapped.json.files <- syn$downloadTableColumns(tbl.entity, columns = c(column))
     mapped.json.files <- tibble(fileHandleId = names(mapped.json.files),
                                 jsonPath = as.character(mapped.json.files))
