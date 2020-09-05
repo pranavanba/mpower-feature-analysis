@@ -20,7 +20,7 @@ registerDoMC(detectCores())
 ####################################
 #### Global Variables ##############
 ####################################
-PYTHON_ENV <- "~/Documents/SageBionetworks/environments/test_venv"
+PYTHON_ENV <- "~/env"
 GIT_PATH <- "~/git_token.txt"
 WALK_TBL <- "syn12514611"
 
