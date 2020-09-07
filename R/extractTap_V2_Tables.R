@@ -100,12 +100,12 @@ main <-  function(){
     
     result$left <- data %>% 
         process.tapping.samples(., "left_tapping.samples_jsonPath") %>% 
-        dplyr::rename_with(.cols = -KEEP_METADATA, 
+        dplyr::rename_with(.cols = -all_of(KEEP_METADATA), 
                            .fn = function(x){paste0("left_", x)})
     
     result$right <- data %>% 
         process.tapping.samples(., "right_tapping.samples_jsonPath") %>% 
-        dplyr::rename_with(.cols = -KEEP_METADATA, 
+        dplyr::rename_with(.cols = -all_of(KEEP_METADATA), 
                            .fn = function(x){paste0("right_", x)})
     
     result <- result %>% 
