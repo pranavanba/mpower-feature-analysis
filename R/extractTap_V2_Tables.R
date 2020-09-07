@@ -79,7 +79,7 @@ featurize_tapping <- function(data){
 process.tapping.samples <- function(data, col){
     features <- plyr::ddply(
         .data = data,
-        .variables = KEEP_METADATA,
+        .variables = all_of(KEEP_METADATA),
         .fun = function(row){
             tryCatch({
                 data <- jsonlite::fromJSON(row[[col]])
