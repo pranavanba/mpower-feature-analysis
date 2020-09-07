@@ -110,8 +110,9 @@ main <-  function(){
     
     result <- result %>% 
         purrr::reduce(dplyr::full_join, 
-                      by = KEEP_METADATA) %>%
-        write.table(., sep = "\t",row.names=F, quote=F)
+                      by = all_of(KEEP_METADATA)) %>%
+        write.table(., OUTPUT.FILE, 
+                    sep = "\t",row.names=F, quote=F)
     
     file <- synapser::File(
         OUTPUT.FILE, 
