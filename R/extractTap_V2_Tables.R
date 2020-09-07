@@ -39,7 +39,7 @@ OUTPUT.FILE <- "mhealthtools_tap_features_mpowerV2.tsv"
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 retrieve.tables <- function(synID, filehandles, keepCols = c()){
-    tbl.entity <- synTableQuery(sprintf("SELECT * FROM %s LIMIT 50", synID)) 
+    tbl.entity <- synTableQuery(sprintf("SELECT * FROM %s", synID)) 
     mapped.json.files <- synDownloadTableColumns(tbl.entity, 
                                                  columns = filehandles)
     tbl.df <- tbl.entity$asDataFrame()
