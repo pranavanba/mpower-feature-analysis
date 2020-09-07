@@ -121,8 +121,10 @@ main <-  function(){
         executed = GIT_URL,
         used = c(TAP_TBL))
     synStore(file, activity = activity)
-    unlink(OUTPUT.FILE[[cols]])
+    unlink(OUTPUT.FILE)
     
 }
+
+main()
 
 
