@@ -54,6 +54,12 @@ parse_argument <- function(){
                         type="character", 
                         default="syn24182621", 
                         help="synapse parent id")
+    parser$add_argument("-f", 
+                        "--filehandle", 
+                        type="character", 
+                        default="walk_motion.json", 
+                        help="synapse parent id")
+    
     return(parser$parse_args())
 }
 
@@ -64,6 +70,7 @@ GIT_TOKEN_PATH <- parsed_var$git_token
 GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
+FILEHANDLE <- parsed_var$filehandle
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
@@ -148,7 +155,7 @@ process_walk_data <- function(data){
 
 main <- function(){
     #' get raw data
-    raw_data <- get_table(WALK_TBL, "walk_motion.json") %>% 
+    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
         process_walk_data() %>%
         dplyr::mutate(createdOn = as.POSIXct(
             createdOn/1000, origin="1970-01-01")) %>%
