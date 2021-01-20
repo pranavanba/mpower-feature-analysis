@@ -24,12 +24,12 @@ registerDoMC(detectCores())
 #' function to parse argument used for extracting features
 parse_argument <- function(){
     parser <- ArgumentParser()
-    parser$add_argument("-git", 
+    parser$add_argument("-g", 
                         "--git_token", 
                         type="character", 
                         default="~/git_token.txt", 
                         help="path to github token")
-    parser$add_argument("-repo", 
+    parser$add_argument("-r", 
                         "--git_repo", 
                         type="character", 
                         default="arytontediarjo/feature_extraction_codes", 
@@ -39,7 +39,7 @@ parse_argument <- function(){
                         type="character", 
                         default="~/Documents/SageBionetworks/environments/test_venv", 
                         help="path to python virtual environment")
-    parser$add_argument("-src", 
+    parser$add_argument("-s", 
                         "--tbl_source", 
                         type="character", 
                         default="syn12514611", 
@@ -49,6 +49,11 @@ parse_argument <- function(){
                         type="character", 
                         default="PDkitRotation_walk30s_features_mPowerV2.tsv", 
                         help="synId table source")
+    parser$add_argument("-p", 
+                        "--parent_id", 
+                        type="character", 
+                        default="syn24182621", 
+                        help="synapse parent id")
     return(parser$parse_args())
 }
 
@@ -58,7 +63,7 @@ PYTHON_ENV <- parsed_var$venv_path
 GIT_TOKEN_PATH <- parsed_var$git_token
 GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
-OUTPUT_PARENT_ID <- "syn22294858"
+OUTPUT_PARENT_ID <- parsed_var$parent_id
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
@@ -158,7 +163,6 @@ main <- function(){
         executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
-
 
 main()
 
