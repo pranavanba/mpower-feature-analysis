@@ -13,7 +13,8 @@ RUN R -e 'install.packages("synapser", repos = c("http://ran.synapse.org", "http
     && R -e 'install.packages("reticulate")'\
     && R -e 'devtools::install_github("Sage-Bionetworks/mhealthtools")'\
     && R -e 'install.packages("plyr")'\
-    && R -e 'install.packages("jsonlite")'
+    && R -e 'install.packages("jsonlite")'\
+    && R -e 'install.packages("argparse")'
 
 ## python dependencies
 RUN python3 -m venv ~/env\

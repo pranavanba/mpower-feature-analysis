@@ -69,14 +69,14 @@ KEEP_METADATA <- c("recordId","healthCode",
 #### instantiate python objects #### 
 ####################################
 reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
-gait.feature.py.obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
+gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
 
 ####################################
 #### instantiate github #### 
 ####################################
-setGithubToken(readLines(GIT_PATH))
+setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(
     GIT_REPO, repositoryPath = SCRIPT_PATH)
 
