@@ -56,7 +56,6 @@ synapser::synLogin()
 ##############################
 # Global Variables
 #############################
-FEATURES <- "syn24182646"
 DEMO_TBL <- "syn15673379"
 CURRENT_YEAR  <- lubridate::year(lubridate::now())
 
