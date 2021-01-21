@@ -108,6 +108,8 @@ main <- function(){
     unlink(OUTPUT_FILE)
 }
 
+main()
+
 
 
 
