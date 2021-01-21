@@ -1,6 +1,7 @@
 library(data.table)
 library(argparse)
 library(tidyverse)
+library(githubr)
 
 ####################################
 #### Parsing ##############
@@ -42,12 +43,11 @@ parse_argument <- function(){
 
 parsed_var <- parse_argument()
 FEATURES <- parsed_var$features
-PYTHON_ENV <- parsed_var$venv_path
 GIT_TOKEN_PATH <- parsed_var$git_token
 GIT_REPO <- parsed_var$git_repo
+SCRIPT_PATH <- file.path("R", "aggregate_features.R")
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
-FILEHANDLE <- parsed_var$filehandle
 DO_AGGREGATE <- parsed_var$run_aggregate
 
 synapser::synLogin()
@@ -59,6 +59,12 @@ synapser::synLogin()
 FEATURES <- "syn24182646"
 DEMO_TBL <- "syn15673379"
 CURRENT_YEAR  <- lubridate::year(lubridate::now())
+
+####################################
+#### instantiate github #### 
+####################################
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 
 
 ##############################
@@ -104,7 +110,7 @@ main <- function(){
     synapser::synStore(
         f, activity = synapser::Activity(
         "aggregate walk features",
-        used = c(WALK_TBL),
+        used = c(FEATURES),
         executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
