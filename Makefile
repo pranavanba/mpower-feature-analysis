@@ -15,6 +15,12 @@ filter:
 	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
 	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
 	
+# used if data is available (QnD)	
+aggregate:
+	Rscript "R/aggregate_features.R" -f "syn24182637" -o "mpowerV2_walking_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
+	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
+	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
+	
 	
 
 
