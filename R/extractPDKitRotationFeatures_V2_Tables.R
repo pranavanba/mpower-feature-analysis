@@ -159,7 +159,8 @@ main <- function(){
         process_walk_data() %>%
         dplyr::mutate(createdOn = as.POSIXct(
             createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(-fileHandleId, -jsonPath)
+        dplyr::select(-fileHandleId, -jsonPath) %>% 
+        dplyr::mutate(error = na_if(error, "NaN"))
     
     #' store walk30s features
     write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
