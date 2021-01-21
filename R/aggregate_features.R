@@ -100,8 +100,9 @@ main <- function(){
             dplyr::inner_join(get_demographics(), by = c("healthCode"))
     }
     write.table(result, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
-    f <- sc$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
-    syn$store(f, activity = sc$Activity(
+    f <- synapser::File(OUTPUT_FILE, OUTPUT_PARENT_ID)
+    synapser::synStore(
+        f, activity = synapser::Activity(
         "aggregate walk features",
         used = c(WALK_TBL),
         executed = GIT_URL))
