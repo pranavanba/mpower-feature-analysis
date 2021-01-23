@@ -1,160 +1,198 @@
-#' This script is used to query walking data
-#' using pdkit rotation features using reticulate 
-#' virtual environment
-library(mhealthtools)
+########################################################################
+#' Utility script for extracting pdkit features
+#' 
+#' Purpose: 
+#' This script is used to extract
+#' walking features (PDKit + Rotation) fron 30s walk data
+#' 
+#' Author: Aryton Tediarjo
+#' email: aryton.tediarjo@sagebase.org
+########################################################################
 library(reticulate)
 library(tidyverse)
 library(plyr)
 library(jsonlite)
 library(doMC)
 library(githubr)
+library(jsonlite)
+library(argparse)
 registerDoMC(detectCores())
 
-##############################
-##### Global Variables #######
-##############################
-PYTHON_ENV <- "~/Documents/SageBionetworks/environments/test_venv" ## insert python virtualenv here
-GIT_PATH <- "~/git_token.txt"
-TABLE_SRC <- "syn10308918"
-COLUMNS <- c("deviceMotion_walking_outbound.json.items", 
-             "deviceMotion_walking_return.json.items")
-OUTPUT_FILE <- "pdkit_rotation_walking_features_table_V1.tsv"
-PARENT_ID <- "syn22294858"
+####################################
+#### Parsing ##############
+####################################
+#' function to parse argument used for extracting features
+parse_argument <- function(){
+    parser <- ArgumentParser()
+    parser$add_argument("-g", 
+                        "--git_token", 
+                        type="character", 
+                        default="~/git_token.txt", 
+                        help="path to github token")
+    parser$add_argument("-r", 
+                        "--git_repo", 
+                        type="character", 
+                        default="arytontediarjo/feature_extraction_codes", 
+                        help="path to cloned/fork github repo")
+    parser$add_argument("-e", 
+                        "--venv_path", 
+                        type="character", 
+                        default="~/Documents/SageBionetworks/environments/test_venv", 
+                        help="path to python virtual environment")
+    parser$add_argument("-s", 
+                        "--tbl_source", 
+                        type="character", 
+                        default="syn10308918", 
+                        help="synId table source")
+    parser$add_argument("-o", 
+                        "--output", 
+                        type="character", 
+                        default="PDkitRotation_walk30s_features_mPowerV1.tsv", 
+                        help="synId table source")
+    parser$add_argument("-p", 
+                        "--parent_id", 
+                        type="character", 
+                        default="syn24182621", 
+                        help="synapse parent id")
+    parser$add_argument("-f", 
+                        "--filehandle", 
+                        type="character", 
+                        default="deviceMotion_walking_outbound.json.items", 
+                        help="synapse file handle for time series")
+    
+    return(parser$parse_args())
+}
 
-### set up github credentials
-githubr::setGithubToken(readLines(GIT_PATH))
-GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-SCRIPT_NAME <- "extractPDKitRotationFeatures_V1_Tables.R"
-GIT_URL <- githubr::getPermlink(
-    "arytontediarjo/feature_extraction_codes", 
-    repositoryPath = 'R/extractPDKitRotationFeatures_V1_Tables.R')
+parsed_var <- parse_argument()
+WALK_TBL <- parsed_var$tbl_source
+PYTHON_ENV <- parsed_var$venv_path
+GIT_TOKEN_PATH <- parsed_var$git_token
+GIT_REPO <- parsed_var$git_repo
+OUTPUT_FILE <- parsed_var$output
+OUTPUT_PARENT_ID <- parsed_var$parent_id
+FILEHANDLE <- parsed_var$filehandle
+SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V1_Tables.R")
+KEEP_METADATA <- c("recordId","healthCode", "createdOn", "appVersion",
+                   "phoneInfo","fileHandleId", "jsonPath", "medTimepoint")
 
 ####################################
 #### instantiate python objects #### 
 ####################################
 reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
-gait.feature.py.obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
+gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
+
+####################################
+#### instantiate github #### 
+####################################
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(
+    GIT_REPO, repositoryPath = SCRIPT_PATH)
+
 
 ###########################
 #### helper functions ####
 ###########################
-get_pdkit_rotation_features <- function(data){
-    #' Function to wrap pdkit rotation features in mHealthtools
-    accel.data <- data %>% 
-        filter(sensorType == "userAcceleration")
-    gyro.data <- data %>% 
-        filter(sensorType == "rotationRate")
-    features <- gait.feature.py.obj$run_pipeline(accel.data, gyro.data)
-    return(features)
-}
-
-extract.walk.table <- function(){
-    #' Function to query table from synapse, download sensor files
-    #' and make it into the valid formatting
-    mpower.tbl.entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 5", TABLE_SRC))
-    mpower.tbl.data <- mpower.tbl.entity$asDataFrame() %>% 
-        dplyr::mutate(
-            deviceMotion_walking_outbound.json.items = as.character(
-                deviceMotion_walking_outbound.json.items),
-            deviceMotion_walking_return.json.items = as.character(
-                deviceMotion_walking_return.json.items)) %>%
-        dplyr::mutate(medTimepoint = .$medTimepoint%>% unlist())
-    mapped.walking.json.files <- syn$downloadTableColumns(mpower.tbl.entity, COLUMNS) %>% 
-        data.frame()
-    mapped.walking.json.files <- data.frame(
-        fileHandleId = names(mapped.walking.json.files) %>% 
-            substring(., first = 2) %>% 
-            as.character(.),
-        jsonPath = as.character(mapped.walking.json.files))
-    mpower.tbl.data <- mpower.tbl.data %>% 
-        dplyr::left_join(., mapped.walking.json.files, 
-                         by = c("deviceMotion_walking_outbound.json.items" = "fileHandleId")) %>%
-        dplyr::left_join(., mapped.walking.json.files,
-                         by = c("deviceMotion_walking_return.json.items" = "fileHandleId")) %>%
-        dplyr::rename(walk.outbound.json=jsonPath.x, 
-                      walk.return.json=jsonPath.y)
-    return(mpower.tbl.data)
-}
-
-shape.time.series.from.json <- function(x){
+featurize_walk_data <- function(ts){
     #' Function to shape time series from json
     #' and make it into the valid formatting
-    ts <- fromJSON(x)
-    accel.ts <- ts %>% 
+    accel_ts <- ts %>% 
         dplyr::select(matches("userAcceleration|timestamp")) %>%
         dplyr::mutate(timestamp = timestamp - .$timestamp[1],
-               sensorType = "userAcceleration") %>%
+                      sensorType = "userAcceleration") %>%
         flatten() %>%
         dplyr::rename(
-            "t" = "timestamp", 
-            "x" = "userAcceleration.x", 
-            "y" = "userAcceleration.y",
-            "z" = "userAcceleration.z")
-    rotation.ts <- ts %>% 
+            t = timestamp, 
+            x = userAcceleration.x, 
+            y = userAcceleration.y,
+            z = userAcceleration.z)
+    rotation_ts <- ts %>% 
         dplyr::select(matches("rotationRate|timestamp")) %>%
         dplyr::mutate(timestamp = timestamp - .$timestamp[1],
-               sensorType = "rotationRate") %>% 
+                      sensorType = "rotationRate") %>% 
         flatten() %>%
         dplyr::rename(
             t = timestamp, 
             x = rotationRate.x, 
             y = rotationRate.y,
             z = rotationRate.z)
-    return(rbind(accel.ts, rotation.ts))
+    features <- gait_feature_py_obj$run_pipeline(accel_ts, rotation_ts)
+    return(features)
 }
 
-featurize.table <- function(data, col){
-    #' Function to process sensor parallely and bind it into one big feature sets
-    walkFeatures <- ddply(.data = data, 
-                          .variables=c("recordId", "appVersion","createdOn", 
-                                       "healthCode", "phoneInfo", "medTimepoint"), 
-                          .parallel=T, 
-                          .fun = function(row) { 
-                              tryCatch({ 
-                                  ts <- shape.time.series.from.json(row[[col]])
-                                  features.list <- mhealthtools:::sensor_features(
-                                      ts, models = function(x){get_pdkit_rotation_features(x)}) 
-                                  return(features.list$model_features[[1]]%>%
-                                             mutate(error = as.character(error)))
-                              },error = function(err){
-                                  return(tibble(error = 'error: NA filepath, unable to process'))})})
-    return(walkFeatures %>% 
-               dplyr::mutate(error = case_when(error == "NaN" ~ NA)))
+#' Entry-point function to parse each filepath of each recordIds
+#' walk data and featurize each record using featurize walk data function
+#' @params data: dataframe containing filepaths
+#' @returns featurized walk data for each participant 
+process_walk_data <- function(data){
+    features <- plyr::ddply(
+        .data = data,
+        .variables = KEEP_METADATA,
+        .parallel = TRUE,
+        .fun = function(row){
+            tryCatch({ # capture common errors
+                ts <- jsonlite::fromJSON(row$jsonPath)
+                print("yes")
+                if(nrow(ts) == 0){
+                    stop("ERROR: sensor timeseries is empty")
+                }else if(!all(c("userAcceleration", "rotationRate") %in% 
+                              (names(ts)))){
+                    stop("ERROR: user accel and rotation rate not available")
+                }else{
+                    return(featurize_walk_data(ts))
+                }
+            }, error = function(err){ # capture all other error
+                error_msg <- str_squish(str_replace_all(geterrmessage(), "\n", ""))
+                return(tibble(error = error_msg))})})
+    return(features)
 }
+
+
+get_table <- function(WALK_TBL, FILEHANDLE){
+    #' Function to query table from synapse, download sensor files
+    #' and make it into the valid formatting
+    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 5", WALK_TBL))
+    mpower_tbl_data <- mpower_tbl_entity$asDataFrame() %>% 
+        tibble::as_tibble(.) %>%
+        dplyr::mutate(
+            !!sym(FILEHANDLE) := as.character(
+                !!sym(FILEHANDLE)),
+            medTimepoint = .$medTimepoint%>% unlist()) %>%
+        dplyr::select(everything(), fileHandleId := !!sym(FILEHANDLE))
+    mapped_walking_json_files <- syn$downloadTableColumns(
+        mpower_tbl_entity, 
+        FILEHANDLE) %>% 
+        data.frame()
+    mapped_walking_json_files <- data.frame(
+        fileHandleId = names(mapped_walking_json_files) %>% 
+            substring(., first = 2) %>% 
+            as.character(.),
+        jsonPath = as.character(mapped_walking_json_files))
+    mpower_tbl_data <- mpower_tbl_data %>% 
+        dplyr::left_join(., mapped_walking_json_files)
+    return(mpower_tbl_data)
+}
+
 
 main <- function(){
-    # extract table from synapse
-    walk.tbl <- extract.walk.table()
+    #' get raw data
+    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
+        process_walk_data() %>%
+        dplyr::mutate(createdOn = as.POSIXct(
+            createdOn/1000, origin="1970-01-01")) %>%
+        dplyr::select(-fileHandleId, -jsonPath) %>% 
+        dplyr::mutate(error = na_if(error, "NaN"))
     
-    # featurize and bind
-    all.walk.features<- dplyr::bind_rows(
-        walk.tbl %>% 
-            featurize.table(., "walk.outbound.json") %>% 
-            mutate(walk_test_direction="outbound"),
-        walk.tbl %>% 
-            featurize.table(., "walk.return.json") %>%
-            mutate(walk_test_direction="return")) %>% 
-        write.table(., OUTPUT_FILE, sep="\t", 
-                    row.names=F, quote=F)
-    
-    # save to synapse
-    f <- sc$File(OUTPUT_FILE, PARENT_ID)
-    f$annotations <- list(features='PDKit and Rotation')
-    syn$store(f, activity = sc$Activity(used = c(TABLE_SRC),
-                                        executed = GIT_URL))
+    #' store walk30s features
+    write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
+    f <- sc$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
+    syn$store(f, activity = sc$Activity(
+        "retrieve v1 raw walk features",
+        used = c(WALK_TBL),
+        executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
+
 main()
-
-
-
-
-    
-
-
-
-
-
 
