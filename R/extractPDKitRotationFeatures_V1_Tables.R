@@ -152,7 +152,7 @@ process_walk_data <- function(data){
 get_table <- function(WALK_TBL, FILEHANDLE){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 5", WALK_TBL))
+    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s", WALK_TBL))
     mpower_tbl_data <- mpower_tbl_entity$asDataFrame() %>% 
         tibble::as_tibble(.) %>%
         dplyr::mutate(
