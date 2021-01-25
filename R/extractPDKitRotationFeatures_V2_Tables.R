@@ -75,7 +75,7 @@ SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
                    "phoneInfo","fileHandleId", 
-                   "jsonPath")
+                   "jsonPath", "medTimepoint")
 
 ####################################
 #### instantiate python objects #### 
@@ -137,6 +137,7 @@ process_walk_data <- function(data){
         .variables = KEEP_METADATA,
         .parallel = TRUE,
         .fun = function(row){
+            print(row)
             tryCatch({ # capture common errors
                 ts <- jsonlite::fromJSON(row$jsonPath)
                 if(nrow(ts) == 0){
@@ -156,10 +157,16 @@ process_walk_data <- function(data){
 main <- function(){
     #' get raw data
     raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
-        process_walk_data() %>%
+        dplyr::rowwise() %>%
+        dplyr::mutate(medTimepoint = glue::glue_collapse(
+            answers.medicationTiming, ", ")) %>%
+        tibble::as_tibble(.) %>%
+        process_walk_data(.) %>%
         dplyr::mutate(createdOn = as.POSIXct(
             createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(-fileHandleId, -jsonPath) %>% 
+        dplyr::select(-fileHandleId, -jsonPath,
+                      medTimepoint = answers.medicationTiming,
+                      everything()) %>% 
         dplyr::mutate(error = na_if(error, "NaN"))
     
     #' store walk30s features
