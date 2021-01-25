@@ -137,7 +137,6 @@ process_walk_data <- function(data){
         .variables = KEEP_METADATA,
         .parallel = TRUE,
         .fun = function(row){
-            print(row)
             tryCatch({ # capture common errors
                 ts <- jsonlite::fromJSON(row$jsonPath)
                 if(nrow(ts) == 0){
