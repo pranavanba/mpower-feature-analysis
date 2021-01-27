@@ -14,16 +14,19 @@ extract_passive:
 	
 # used if data is available (QnD)	
 filter:
-	Rscript "R/aggregate_features.R" -f "syn24191710" -o "mpowerV1_walking_outbound_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
-	Rscript "R/aggregate_features.R" -f "syn24191712" -o "mpowerV1_walking_return_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
-	Rscript "R/aggregate_features.R" -f "syn24201058" -o "mpowerV1_walking_rest_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
-	Rscript "R/aggregate_features.R" -f "syn24182637" -o "mpowerV2_walking_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
-	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
-	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_filtered.tsv" -p "syn24182621"
+	Rscript "R/aggregate_features.R" -f "syn24191710" -o "mpowerV1_walking_outbound_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 1
+	Rscript "R/aggregate_features.R" -f "syn24191712" -o "mpowerV1_walking_return_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 1
+	Rscript "R/aggregate_features.R" -f "syn24201058" -o "mpowerV1_walking_rest_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 1
+	Rscript "R/aggregate_features.R" -f "syn24182637" -o "mpowerV2_walking_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 2
+	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 2
+	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_filtered.tsv" -p "syn24182621" -d 2
 	
 	
 # used if data is available (QnD)	
 aggregate:
-	Rscript "R/aggregate_features.R" -f "syn24182637" -o "mpowerV2_walking_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
-	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
-	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg
+	Rscript "R/aggregate_features.R" -f "syn24191710" -o "mpowerV1_walking_outbound_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 1
+	Rscript "R/aggregate_features.R" -f "syn24191712" -o "mpowerV1_walking_return_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 1
+	Rscript "R/aggregate_features.R" -f "syn24201058" -o "mpowerV1_walking_rest_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 1
+	Rscript "R/aggregate_features.R" -f "syn24182637" -o "mpowerV2_walking_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 2
+	Rscript "R/aggregate_features.R" -f "syn24182646" -o "mpowerV2_balance_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 2
+	Rscript "R/aggregate_features.R" -f "syn24182636" -o "mpowerV2_passive_PDKitRotationFeatures_userAgg.tsv" -p "syn24184522" -agg -d 2

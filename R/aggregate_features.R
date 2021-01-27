@@ -38,6 +38,11 @@ parse_argument <- function(){
                         "--run_aggregate", 
                         action="store_true", 
                         help="whether to aggregate features")
+    parser$add_argument("-d", 
+                        "--demo_version", 
+                        type = "integer",
+                        default = 2,
+                        help= "which demographics table")
     return(parser$parse_args())
 }
 
@@ -49,6 +54,7 @@ SCRIPT_PATH <- file.path("R", "aggregate_features.R")
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 DO_AGGREGATE <- parsed_var$run_aggregate
+DEMO_TBL_VERSION <- parsed_var$demo_version
 
 synapser::synLogin()
 
@@ -56,7 +62,8 @@ synapser::synLogin()
 ##############################
 # Global Variables
 #############################
-DEMO_TBL <- "syn15673379"
+DEMO_TBL_V1 <- "syn10371840"
+DEMO_TBL_V2 <- "syn15673379"
 CURRENT_YEAR  <- lubridate::year(lubridate::now())
 
 ####################################
@@ -78,38 +85,77 @@ aggregate_sensor_features <- function(data, col = c("healthCode"),
         dplyr::summarise_if(is.numeric, .funs = agg_func, na.rm = TRUE)
 }
 
+#' function to retrieve/clean demographic information
+#' of mPower users
+get_demographics_v1 <- function(){
+    demo <- synapser::synTableQuery(
+        glue::glue("SELECT * FROM {DEMO_TBL_V1}"))$asDataFrame()
+    colnames(demo) <- gsub("_|-", ".", names(demo))
+    if("inferred.diagnosis" %in% names(demo)){
+        demo <- demo %>% 
+            mutate(diagnosis = demo$inferred.diagnosis) %>%
+            dplyr::select(-c(professional.diagnosis, inferred.diagnosis)) %>%
+            filter(dataGroups %in% c("parkinson", "control", NA))
+    }else{
+        demo <- demo %>% 
+            dplyr::rename("diagnosis" = "professional.diagnosis")
+    }
+    ## clean demographics data
+    demo <- demo %>%
+        dplyr::select(healthCode, age, sex = gender, diagnosis) %>%
+        dplyr::mutate(sex = tolower(sex)) %>%
+        dplyr::filter((!is.infinite(age) & age <= 120) | is.na(age)) %>%
+        plyr::ddply(.(healthCode), .fun = function(x){
+            x$age = mean(x$age, na.rm = TRUE)
+            x$diagnosis = ifelse(
+                length(unique(x$diagnosis)) > 1, 
+                NA, unique(x$diagnosis))
+            return(x[1,])})
+    return(demo)
+}
+
 #' get demographic info, average age for multiple records
 #' get most recent entry for sex, createdOn, diagnosis
 #' remove test users
-get_demographics <- function(){
+get_demographics_v2 <- function(){
     synapser::synTableQuery(
-        glue::glue("SELECT * FROM {DEMO_TBL}"))$asDataFrame() %>% 
+        glue::glue("SELECT * FROM {DEMO_TBL_V2}"))$asDataFrame() %>% 
         as_tibble() %>% 
         dplyr::filter(!str_detect(dataGroups, "test")) %>%
         dplyr::mutate(age = CURRENT_YEAR - birthYear) %>%
         dplyr::arrange(desc(createdOn)) %>%
         distinct(healthCode, .keep_all = TRUE) %>%
-        group_by(healthCode, diagnosis, sex) %>% 
-        summarise(age = mean(age, na.rm = TRUE))
+        dplyr::group_by(healthCode, diagnosis, sex) %>% 
+        dplyr::summarise(age = mean(age, na.rm = TRUE)) %>% 
+        dplyr::mutate(
+            diagnosis = ifelse(
+                diagnosis == "no_answer", NA, diagnosis),
+                sex = ifelse(sex == "no_answer", NA, sex))
 }
 
-
 main <- function(){
+    
+    demographics_data <- if(parsed_var$demo_version == 1){
+        get_demographics_v1()
+    }else{
+        get_demographics_v2()
+    }
+    
     #' retrieve and aggregate features
     if(DO_AGGREGATE){
         result <- fread(synapser::synGet(FEATURES)$path) %>%
             aggregate_sensor_features(.) %>%
-            dplyr::inner_join(get_demographics(), by = c("healthCode"))
+            dplyr::inner_join(demographics_data, by = c("healthCode"))
     }else{
         result <- fread(synapser::synGet(FEATURES)$path) %>%
-            dplyr::inner_join(get_demographics(), by = c("healthCode"))
+            dplyr::inner_join(demographics_data, by = c("healthCode"))
     }
     write.table(result, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
     f <- synapser::File(OUTPUT_FILE, OUTPUT_PARENT_ID)
     synapser::synStore(
         f, activity = synapser::Activity(
         "aggregate walk features",
-        used = c(FEATURES),
+        used = c(FEATURES, DEMO_TBL),
         executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
