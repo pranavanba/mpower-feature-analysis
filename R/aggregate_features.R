@@ -136,10 +136,12 @@ get_demographics_v2 <- function(){
 
 main <- function(){
     
-    demographics_data <- if(parsed_var$demo_version == 1){
-        get_demographics_v1()
+    if(parsed_var$demo_version == 1){
+        demo_syn_id <- DEMO_TBL_V1
+        demographics_data <- demographics_v1()
     }else{
-        get_demographics_v2()
+        demo_syn_id <- DEMO_TBL_V2
+        demographics_data <- get_demographics_v2()
     }
     
     #' retrieve and aggregate features
@@ -156,7 +158,7 @@ main <- function(){
     synapser::synStore(
         f, activity = synapser::Activity(
         "aggregate walk features",
-        used = c(FEATURES, DEMO_TBL),
+        used = c(FEATURES, demo_syn_id),
         executed = GIT_URL))
     unlink(OUTPUT_FILE)
 }
