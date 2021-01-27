@@ -2,6 +2,7 @@ library(data.table)
 library(argparse)
 library(tidyverse)
 library(githubr)
+library(plyr)
 
 ####################################
 #### Parsing ##############
