@@ -138,7 +138,7 @@ main <- function(){
     
     if(parsed_var$demo_version == 1){
         demo_syn_id <- DEMO_TBL_V1
-        demographics_data <- demographics_v1()
+        demographics_data <- get_demographics_v1()
     }else{
         demo_syn_id <- DEMO_TBL_V2
         demographics_data <- get_demographics_v2()
