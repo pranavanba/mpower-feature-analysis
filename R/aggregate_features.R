@@ -56,6 +56,7 @@ OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 DO_AGGREGATE <- parsed_var$run_aggregate
 DEMO_TBL_VERSION <- parsed_var$demo_version
+USER_CATEGORIZATION <- "syn17074533"
 
 synapser::synLogin()
 
@@ -77,6 +78,14 @@ GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 ##############################
 # Helpers
 #############################
+
+#' get user categorization 
+get_user_categorization <- function(){
+    fread(synapser::synGet(USER_CATEGORIZATION)$path, sep = ",") %>% 
+        tibble::as_tibble(.) %>% 
+        dplyr::filter(userType != "test")
+}
+
 #' utility function for aggregating features
 aggregate_sensor_features <- function(data, col = c("healthCode"), 
                                       agg_func = list("med" = median, "iqr" = IQR,"var" = var)){
@@ -135,23 +144,28 @@ get_demographics_v2 <- function(){
 }
 
 main <- function(){
-    
+    #' parsing condition
     if(parsed_var$demo_version == 1){
         demo_syn_id <- DEMO_TBL_V1
         demographics_data <- get_demographics_v1()
     }else{
         demo_syn_id <- DEMO_TBL_V2
-        demographics_data <- get_demographics_v2()
+        demographics_data <- get_demographics_v2() %>% 
+            dplyr::inner_join(
+                get_user_categorization(), 
+                by = c("healthCode"))
     }
     
     #' retrieve and aggregate features
     if(DO_AGGREGATE){
         result <- fread(synapser::synGet(FEATURES)$path) %>%
             aggregate_sensor_features(.) %>%
-            dplyr::inner_join(demographics_data, by = c("healthCode"))
+            dplyr::inner_join(demographics_data, 
+                              by = c("healthCode"))
     }else{
         result <- fread(synapser::synGet(FEATURES)$path) %>%
-            dplyr::inner_join(demographics_data, by = c("healthCode"))
+            dplyr::inner_join(demographics_data, 
+                              by = c("healthCode"))
     }
     write.table(result, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
     f <- synapser::File(OUTPUT_FILE, OUTPUT_PARENT_ID)
