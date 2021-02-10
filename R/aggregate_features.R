@@ -89,10 +89,16 @@ get_user_categorization <- function(){
 #' utility function for aggregating features
 aggregate_sensor_features <- function(data, col = c("healthCode"), 
                                       agg_func = list("med" = median, "iqr" = IQR,"var" = var)){
-    data %>%
+    num_records <- data %>%
+        dplyr::group_by(healthCode) %>%
+        dplyr::summarise(nrecords = n()) %>%
+        dplyr::select(healthCode, nrecords)
+    features <- data %>%
         dplyr::select(-c("window_end", "window_start", "window_end")) %>%
         dplyr::group_by_at(col) %>%
         dplyr::summarise_if(is.numeric, .funs = agg_func, na.rm = TRUE)
+    aggregate_data <- num_records %>% dplyr::inner_join(features, by = c("healthCode"))
+    return(aggregate_data)
 }
 
 #' function to retrieve/clean demographic information
