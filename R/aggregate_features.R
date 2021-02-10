@@ -97,7 +97,8 @@ aggregate_sensor_features <- function(data, col = c("healthCode"),
         dplyr::select(-c("window_end", "window_start", "window_end")) %>%
         dplyr::group_by_at(col) %>%
         dplyr::summarise_if(is.numeric, .funs = agg_func, na.rm = TRUE)
-    aggregate_data <- num_records %>% dplyr::inner_join(features, by = c("healthCode"))
+    aggregate_data <- num_records %>% 
+        dplyr::inner_join(features, by = c("healthCode"))
     return(aggregate_data)
 }
 
@@ -126,7 +127,8 @@ get_demographics_v1 <- function(){
             x$diagnosis = ifelse(
                 length(unique(x$diagnosis)) > 1, 
                 NA, unique(x$diagnosis))
-            return(x[1,])})
+            return(x[1,])}) %>% 
+        dplyr::mutate(diagnosis = case_when(diagnosis == TRUE ~ "parkinsons", TRUE ~ "control"))
     return(demo)
 }
 
