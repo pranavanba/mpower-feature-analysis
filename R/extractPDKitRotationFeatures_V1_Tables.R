@@ -138,7 +138,6 @@ process_walk_data <- function(data){
         .fun = function(row){
             tryCatch({ # capture common errors
                 ts <- jsonlite::fromJSON(row$jsonPath)
-                print("yes")
                 if(nrow(ts) == 0){
                     stop("ERROR: sensor timeseries is empty")
                 }else if(!all(c("userAcceleration", "rotationRate") %in% 
