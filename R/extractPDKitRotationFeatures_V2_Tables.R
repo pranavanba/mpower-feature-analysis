@@ -61,7 +61,7 @@ parse_argument <- function(){
                         help="synapse parent id")
     parser$add_argument("-w",
                         "--window_size",
-                        type = "double",
+                        type = "integer",
                         default = 512,
                         help = "parameter of gait features")
     return(parser$parse_args())
