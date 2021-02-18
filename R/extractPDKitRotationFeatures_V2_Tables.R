@@ -59,7 +59,11 @@ parse_argument <- function(){
                         type="character", 
                         default="walk_motion.json", 
                         help="synapse parent id")
-    
+    parser$add_argument("-w",
+                        "--window_size",
+                        type = "double",
+                        default = 512L,
+                        help = "parameter of gait features")
     return(parser$parse_args())
 }
 
@@ -71,6 +75,7 @@ GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILEHANDLE <- parsed_var$filehandle
+WINDOW_SIZE <- parsed_var$window_size
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
@@ -81,7 +86,9 @@ KEEP_METADATA <- c("recordId","healthCode",
 #### instantiate python objects #### 
 ####################################
 reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
-gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
+gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures") %>% 
+    .$gait_module %>% 
+    .$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
 
@@ -100,7 +107,8 @@ GIT_URL <- githubr::getPermlink(
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}"))
+    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}
+                                            WHERE phoneInfo not like '%iOS%' LIMIT 10"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
                                 jsonPath = as.character(mapped_json_files))
@@ -110,11 +118,28 @@ get_table <- function(synID, column){
     return(joined_df)
 }
 
-#' function to shape->featurize walk time series data
-#' from digital assessment
-#' @params ts: time-series (walk_motion_json from synapse)
-#' @returns returns walk features for each record 
-featurize_walk_data <- function(ts){
+clean_android_ts <- function(ts){
+    ts <- ts %>% 
+        dplyr::filter(stringr::str_detect(
+            sensorType, "accel|gyro|rotation")) %>% 
+        dplyr::mutate(sensorType = 
+                          ifelse(str_detect(sensorType, "accel"), 
+                                 "userAcceleration", sensorType),
+                      sensorType = 
+                          ifelse(str_detect(sensorType, "gyro|rotation"), 
+                                 "rotationRate", sensorType)) %>%
+        split(.$sensorType) %>%
+        purrr::map(., function(ts){
+            ts %>% 
+                dplyr::select(t = timestamp, x, y, z) %>% 
+                drop_na() %>%
+                dplyr::mutate_at(
+                    .vars = c("x", "y", "z"), 
+                    .funs = function(col){col/9.81})})
+    return(ts)
+}
+
+clean_ios_ts <- function(ts){
     ts <- ts %>% 
         dplyr::filter(stringr::str_detect(
             sensorType, "userAcceleration|rotationRate")) %>% 
@@ -123,8 +148,7 @@ featurize_walk_data <- function(ts){
             ts %>% 
                 dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
                 dplyr::select(t,x,y,z)})
-    features <- gait_feature_py_obj$run_pipeline(ts$userAcceleration, ts$rotationRate)
-    return(features)
+    return(ts)
 }
 
 #' Entry-point function to parse each filepath of each recordIds
@@ -141,12 +165,16 @@ process_walk_data <- function(data){
                 ts <- jsonlite::fromJSON(row$jsonPath)
                 if(nrow(ts) == 0){
                     stop("ERROR: sensor timeseries is empty")
-                }else if(!all(c("userAcceleration", "rotationRate") %in% 
-                             (ts$sensorType %>% unique(.)))){
-                    stop("ERROR: user accel and rotation rate not available")
                 }else{
-                    return(featurize_walk_data(ts))
+                    if(row$operatingSystem != "iOS"){
+                        ts <- ts %>% clean_android_ts(.)
+                    }else{
+                        ts <- ts %>% clean_ios_ts(.)
+                    }
+                    features <- gait_feature_py_obj$run_pipeline(
+                        ts$userAcceleration, ts$rotationRate)
                 }
+                return(features)
             }, error = function(err){ # capture all other error
                 error_msg <- str_squish(str_replace_all(geterrmessage(), "\n", ""))
                 return(tibble(error = error_msg))})})
@@ -157,8 +185,9 @@ main <- function(){
     #' get raw data
     raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
         dplyr::rowwise() %>%
-        dplyr::mutate(medTimepoint = glue::glue_collapse(
-            answers.medicationTiming, ", ")) %>%
+        dplyr::mutate(
+            medTimepoint = glue::glue_collapse(answers.medicationTiming, ", "),
+            operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
         tibble::as_tibble(.) %>%
         process_walk_data(.) %>%
         dplyr::mutate(createdOn = as.POSIXct(
