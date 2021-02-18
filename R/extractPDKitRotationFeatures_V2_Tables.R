@@ -75,7 +75,7 @@ GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILEHANDLE <- parsed_var$filehandle
-WINDOW_SIZE <- as.integer(parsed_var$window_size)
+WINDOW_SIZE <- parsed_var$window_size
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
@@ -86,9 +86,7 @@ KEEP_METADATA <- c("recordId","healthCode",
 #### instantiate python objects #### 
 ####################################
 reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
-gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures") %>% 
-    .$gait_module %>% 
-    .$GaitFeatures(sensor_window_size = WINDOW_SIZE)
+gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
 
