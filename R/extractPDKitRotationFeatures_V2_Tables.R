@@ -62,7 +62,7 @@ parse_argument <- function(){
     parser$add_argument("-w",
                         "--window_size",
                         type = "double",
-                        default = 512L,
+                        default = 512,
                         help = "parameter of gait features")
     return(parser$parse_args())
 }
@@ -75,7 +75,7 @@ GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILEHANDLE <- parsed_var$filehandle
-WINDOW_SIZE <- parsed_var$window_size
+WINDOW_SIZE <- as.integer(parsed_var$window_size)
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
