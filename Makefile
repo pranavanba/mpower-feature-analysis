@@ -1,5 +1,6 @@
 all: extract_walk_test extract_balance_test extract_passive filter aggregate
 
+# recipe for extraction based on 5 seconds window
 extract_v1:
 	Rscript "R/extractPDKitRotationFeatures_V1_Tables.R" -s "syn10308918" -o "mpowerV1_walking_outbound_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -f "deviceMotion_walking_outbound.json.items"
 	Rscript "R/extractPDKitRotationFeatures_V1_Tables.R" -s "syn10308918" -o "mpowerV1_walking_return_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -f "deviceMotion_walking_return.json.items"
@@ -8,15 +9,21 @@ extract_v1:
 extract_v2:
 	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_walking_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env"
 	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_balance_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -f "balance_motion.json"
-	
-extract_v2_7_secs:
-	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_walking_7secs_window_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -w 700
-	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_balance_7secs_window_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -f "balance_motion.json" -w 700
 
 extract_passive: 
 	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn17022539" -o "mpowerV2_passive_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env"
+	
+	
+# recipe for extraction based on 7 seconds window
+extract_v1_7_secs:
+	Rscript "R/extractPDKitRotationFeatures_V1_Tables.R" -s "syn10308918" -o "mpowerV1_walking_outbound_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -f "deviceMotion_walking_outbound.json.items" -w 700
+	Rscript "R/extractPDKitRotationFeatures_V1_Tables.R" -s "syn10308918" -o "mpowerV1_walking_return_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -f "deviceMotion_walking_return.json.items" -w 700
+	Rscript "R/extractPDKitRotationFeatures_V1_Tables.R" -s "syn10308918" -o "mpowerV1_walking_rest_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -f "deviceMotion_walking_rest.json.items" -w 700
+extract_v2_7_secs:
+	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_walking_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -w 700
+	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn12514611" -o "mpowerV2_balance_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -f "balance_motion.json" -w 700
 extract_passive_7_secs: 
-	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn17022539" -o "mpowerV2_passive_7secs_window_PDKitRotationFeatures.tsv" -p "syn24182621" -e "~/env" -w 700
+	Rscript "R/extractPDKitRotationFeatures_V2_Tables.R" -s "syn17022539" -o "mpowerV2_passive_7secs_window_PDKitRotationFeatures.tsv" -p "syn24875731" -e "~/env" -w 700
 	
 # used if data is available (QnD)	
 filter:

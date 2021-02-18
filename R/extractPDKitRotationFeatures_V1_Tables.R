@@ -59,7 +59,11 @@ parse_argument <- function(){
                         type="character", 
                         default="deviceMotion_walking_outbound.json.items", 
                         help="synapse file handle for time series")
-    
+    parser$add_argument("-w",
+                        "--window_size",
+                        type = "integer",
+                        default = 512,
+                        help = "parameter of gait features")
     return(parser$parse_args())
 }
 
@@ -71,6 +75,7 @@ GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILEHANDLE <- parsed_var$filehandle
+WINDOW_SIZE <- parsed_var$window_size
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V1_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode", "createdOn", "appVersion",
                    "phoneInfo","fileHandleId", "jsonPath", "medTimepoint")
@@ -79,7 +84,7 @@ KEEP_METADATA <- c("recordId","healthCode", "createdOn", "appVersion",
 #### instantiate python objects #### 
 ####################################
 reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
-gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures()
+gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
 
@@ -152,7 +157,7 @@ process_walk_data <- function(data){
 get_table <- function(WALK_TBL, FILEHANDLE){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s", WALK_TBL))
+    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 10", WALK_TBL))
     mpower_tbl_data <- mpower_tbl_entity$asDataFrame() %>% 
         tibble::as_tibble(.) %>%
         dplyr::mutate(
