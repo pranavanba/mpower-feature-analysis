@@ -183,8 +183,9 @@ main <- function(){
     #' get raw data
     raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
         dplyr::rowwise() %>%
+        dplyr::mutate_at(vars(one_of('answers.medicationTiming'), 
+                              function(x){glue::glue_collapse(x, ", ")})) %>%
         dplyr::mutate(
-            medTimepoint = glue::glue_collapse(answers.medicationTiming, ", "),
             operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
         tibble::as_tibble(.) %>%
         process_walk_data(.) %>%
