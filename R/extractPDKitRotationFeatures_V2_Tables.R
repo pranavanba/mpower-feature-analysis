@@ -37,7 +37,7 @@ parse_argument <- function(){
     parser$add_argument("-e", 
                         "--venv_path", 
                         type="character", 
-                        default="~/Documents/SageBionetworks/environments/test_venv", 
+                        default="~/env", 
                         help="path to python virtual environment")
     parser$add_argument("-s", 
                         "--tbl_source", 
@@ -183,10 +183,11 @@ main <- function(){
     #' get raw data
     raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
         dplyr::rowwise() %>%
-        dplyr::mutate_at(vars(one_of('answers.medicationTiming'), 
-                              function(x){glue::glue_collapse(x, ", ")})) %>%
+        dplyr::mutate_at(if('answers.medicationTiming' %in% names(.)) 'answers.medicationTiming' else integer(0), 
+                              function(x){glue::glue_collapse(x, ", ")}) %>%
         dplyr::mutate(
-            operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
+            medTimepoint = answers.medicationTiming,
+            operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
         tibble::as_tibble(.) %>%
         process_walk_data(.) %>%
         dplyr::mutate(createdOn = as.POSIXct(
