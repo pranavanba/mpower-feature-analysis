@@ -105,7 +105,7 @@ GIT_URL <- githubr::getPermlink(
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}"))
+    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL} LIMIT 10"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
                                 jsonPath = as.character(mapped_json_files))
@@ -180,13 +180,18 @@ process_walk_data <- function(data){
 
 main <- function(){
     #' get raw data
-    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
-        dplyr::rowwise() %>%
-        dplyr::mutate_at(if('answers.medicationTiming' %in% names(.)) 'medTimepoint' else integer(0), 
-                              function(x){glue::glue_collapse(x, ", ")}) %>%
+    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>%
         dplyr::mutate(
-		medTimepoint = NA,
-            	operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
+            operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+    if("answers.medicationTiming" %in% names(raw_data)){
+        raw_data <- raw_data %>% 
+            dplyr::rowwise() %>%
+            dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", "))
+    }else{
+        raw_data <- raw_data %>% 
+            dplyr::mutate(medTimepoint = NA)
+    }
+    raw_data <- raw_data  %>%
         tibble::as_tibble(.) %>%
         process_walk_data(.) %>%
         dplyr::mutate(createdOn = as.POSIXct(
