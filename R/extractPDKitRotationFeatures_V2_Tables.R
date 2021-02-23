@@ -16,6 +16,7 @@ library(doMC)
 library(githubr)
 library(jsonlite)
 library(argparse)
+library(data.table)
 registerDoMC(detectCores())
 
 ####################################
