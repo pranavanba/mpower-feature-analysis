@@ -83,7 +83,6 @@ KEEP_METADATA <- c("recordId","healthCode", "createdOn", "appVersion",
 REMOVE_FEATURES <- c("y_speed_of_gait", "x_speed_of_gait", 
                      "z_speed_of_gait", "AA_stride_regularity",
                      "AA_step_regularity", "AA_symmetry")
-USER_CATEGORIZATION <- "syn17074533"
 
 ####################################
 #### instantiate python objects #### 
@@ -104,14 +103,6 @@ GIT_URL <- githubr::getPermlink(
 ###########################
 #### helper functions ####
 ###########################
-
-#' get user categorization 
-get_user_categorization <- function(){
-    fread(syn$get(USER_CATEGORIZATION)$path, sep = ",") %>%
-        tibble::as_tibble(.) %>% 
-        dplyr::filter(userType != "test")
-}
-
 featurize_walk_data <- function(ts){
     #' Function to shape time series from json
     #' and make it into the valid formatting
@@ -169,7 +160,7 @@ process_walk_data <- function(data){
 get_table <- function(WALK_TBL, FILEHANDLE){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 10", WALK_TBL))
+    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s", WALK_TBL))
     mpower_tbl_data <- mpower_tbl_entity$asDataFrame() %>% 
         tibble::as_tibble(.) %>%
         dplyr::mutate(
@@ -202,8 +193,7 @@ main <- function(){
             -all_of(REMOVE_FEATURES), 
             -jsonPath, 
             -fileHandleId) %>% 
-        dplyr::mutate(error = na_if(error, "NaN")) %>%
-        dplyr::inner_join(get_user_categorization(), by = c("healthCode"))
+        dplyr::mutate(error = na_if(error, "NaN"))
     
     #' store walk30s features
     write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
