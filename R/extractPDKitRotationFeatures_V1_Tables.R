@@ -79,6 +79,10 @@ WINDOW_SIZE <- parsed_var$window_size
 SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V1_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode", "createdOn", "appVersion",
                    "phoneInfo","fileHandleId", "jsonPath", "medTimepoint")
+REMOVE_FEATURES <- c("y_speed_of_gait", "x_speed_of_gait", 
+                     "z_speed_of_gait", "AA_stride_regularity",
+                     "AA_step_regularity", "AA_symmetry")
+USER_CATEGORIZATION <- "syn17074533"
 
 ####################################
 #### instantiate python objects #### 
@@ -99,6 +103,14 @@ GIT_URL <- githubr::getPermlink(
 ###########################
 #### helper functions ####
 ###########################
+
+#' get user categorization 
+get_user_categorization <- function(){
+    fread(syn$get(USER_CATEGORIZATION)$path, sep = ",") %>%
+        tibble::as_tibble(.) %>% 
+        dplyr::filter(userType != "test")
+}
+
 featurize_walk_data <- function(ts){
     #' Function to shape time series from json
     #' and make it into the valid formatting
@@ -185,8 +197,12 @@ main <- function(){
         process_walk_data() %>%
         dplyr::mutate(createdOn = as.POSIXct(
             createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(-fileHandleId, -jsonPath) %>% 
-        dplyr::mutate(error = na_if(error, "NaN"))
+        dplyr::select(
+            -all_of(REMOVE_FEATURES), 
+            -jsonPath, 
+            -fileHandleId) %>% 
+        dplyr::mutate(error = na_if(error, "NaN")) %>%
+        dplyr::inner_join(get_user_categorization(), by = c("healthCode"))
     
     #' store walk30s features
     write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)

@@ -81,6 +81,11 @@ KEEP_METADATA <- c("recordId","healthCode",
                    "createdOn", "appVersion",
                    "phoneInfo","fileHandleId", 
                    "jsonPath", "medTimepoint")
+REMOVE_FEATURES <- c("y_speed_of_gait", "x_speed_of_gait", 
+                       "z_speed_of_gait", "AA_stride_regularity",
+                       "AA_step_regularity", "AA_symmetry")
+USER_CATEGORIZATION <- "syn17074533"
+
 
 ####################################
 #### instantiate python objects #### 
@@ -100,12 +105,20 @@ GIT_URL <- githubr::getPermlink(
 ####################################
 ## Helpers
 ####################################
+#' get user categorization 
+get_user_categorization <- function(){
+    fread(syn$get(USER_CATEGORIZATION)$path, sep = ",") %>%
+        tibble::as_tibble(.) %>% 
+        dplyr::filter(userType != "test")
+}
+
+
 #' function to get table, and merge filepaths with filehandleIDs
 #' Note: Most recent timepoint will be taken for each participantID
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}"))
+    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL} LIMIT 50"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
                                 jsonPath = as.character(mapped_json_files))
@@ -191,15 +204,17 @@ main <- function(){
         raw_data <- raw_data %>% 
             dplyr::mutate(medTimepoint = NA)
     }
-    raw_data <- raw_data  %>%
+    raw_data <- raw_data %>%
         tibble::as_tibble(.) %>%
         process_walk_data(.) %>%
         dplyr::mutate(createdOn = as.POSIXct(
             createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(-fileHandleId, 
-                      -jsonPath,
-                      everything()) %>% 
-        dplyr::mutate(error = na_if(error, "NaN"))
+        dplyr::select(
+            -all_of(REMOVE_FEATURES), 
+            -jsonPath, 
+            -fileHandleId) %>% 
+        dplyr::mutate(error = na_if(error, "NaN")) %>%
+        dplyr::inner_join(get_user_categorization(), by = c("healthCode"))
     
     #' store walk30s features
     write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
