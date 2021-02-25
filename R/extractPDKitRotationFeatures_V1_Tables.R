@@ -17,6 +17,7 @@ library(githubr)
 library(jsonlite)
 library(argparse)
 library(data.table)
+source("R/utils.R")
 registerDoMC(detectCores())
 
 ####################################
@@ -153,6 +154,14 @@ process_walk_data <- function(data){
             }, error = function(err){ # capture all other error
                 error_msg <- str_squish(str_replace_all(geterrmessage(), "\n", ""))
                 return(tibble(error = error_msg))})})
+    features <- features %>%
+        dplyr::mutate(createdOn = as.POSIXct(
+            createdOn/1000, origin="1970-01-01")) %>%
+        dplyr::select(
+            -all_of(REMOVE_FEATURES), 
+            -jsonPath, 
+            -fileHandleId) %>% 
+        dplyr::mutate(error = na_if(error, "NaN"))
     return(features)
 }
 
@@ -160,7 +169,7 @@ process_walk_data <- function(data){
 get_table <- function(WALK_TBL, FILEHANDLE){
     #' Function to query table from synapse, download sensor files
     #' and make it into the valid formatting
-    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s", WALK_TBL))
+    mpower_tbl_entity <- syn$tableQuery(sprintf("SELECT * FROM %s LIMIT 50", WALK_TBL))
     mpower_tbl_data <- mpower_tbl_entity$asDataFrame() %>% 
         tibble::as_tibble(.) %>%
         dplyr::mutate(
@@ -184,25 +193,23 @@ get_table <- function(WALK_TBL, FILEHANDLE){
 
 
 main <- function(){
-    #' get raw data
-    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
-        process_walk_data() %>%
-        dplyr::mutate(createdOn = as.POSIXct(
-            createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(
-            -all_of(REMOVE_FEATURES), 
-            -jsonPath, 
-            -fileHandleId) %>% 
-        dplyr::mutate(error = na_if(error, "NaN"))
+    #' get gait features
+    gait_features <- get_table(WALK_TBL, FILEHANDLE) %>% 
+        process_walk_data()  %>% 
+        segment_gait_data()
     
-    #' store walk30s features
-    write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
-    f <- sc$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
-    syn$store(f, activity = sc$Activity(
-        "retrieve v1 raw walk features",
-        used = c(WALK_TBL),
-        executed = GIT_URL))
-    unlink(OUTPUT_FILE)
+    #' save all segment to synapse
+    purrr::map(names(gait_features), function(segment){
+        filename <- glue::glue(segment, "_", parsed_var$output)
+        write.table(segmented_gait_data[[segment]], 
+                    filename, sep = "\t", row.names=F, quote=F)
+        f <- sc$File(filename, OUTPUT_PARENT_ID)
+        syn$store(f, activity = sc$Activity(
+            "retrieve raw walk features",
+            used = c(WALK_TBL),
+            executed = GIT_URL))
+        unlink(OUTPUT_FILE)
+    })
 }
 
 main()

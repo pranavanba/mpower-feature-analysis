@@ -17,6 +17,7 @@ library(githubr)
 library(jsonlite)
 library(argparse)
 library(data.table)
+source("R/utils.R")
 registerDoMC(detectCores())
 
 ####################################
@@ -43,7 +44,7 @@ parse_argument <- function(){
     parser$add_argument("-s", 
                         "--tbl_source", 
                         type="character", 
-                        default="syn12514611", 
+                        default="syn17022539", 
                         help="synId table source")
     parser$add_argument("-o", 
                         "--output", 
@@ -91,7 +92,6 @@ USER_CATEGORIZATION <- "syn17074533"
 ####################################
 #### instantiate python objects #### 
 ####################################
-reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
 gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
@@ -119,7 +119,7 @@ get_user_categorization <- function(){
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}"))
+    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL} LIMIT 20"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
                                 jsonPath = as.character(mapped_json_files))
@@ -128,6 +128,7 @@ get_table <- function(synID, column){
         dplyr::left_join(mapped_json_files, by = c("fileHandleId"))
     return(joined_df)
 }
+
 
 clean_android_ts <- function(ts){
     ts <- ts %>% 
@@ -189,42 +190,39 @@ process_walk_data <- function(data){
             }, error = function(err){ # capture all other error
                 error_msg <- str_squish(str_replace_all(geterrmessage(), "\n", ""))
                 return(tibble(error = error_msg))})})
+    features <- features %>%
+               dplyr::mutate(createdOn = as.POSIXct(
+                   createdOn/1000, origin="1970-01-01")) %>%
+               dplyr::select(
+                   -all_of(REMOVE_FEATURES), 
+                   -jsonPath, 
+                   -fileHandleId) %>% 
+               dplyr::mutate(error = na_if(error, "NaN"))
     return(features)
 }
 
+
 main <- function(){
     #' get raw data
-    raw_data <- get_table(WALK_TBL, FILEHANDLE) %>%
-        dplyr::mutate(
-            operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android"))
-    if("answers.medicationTiming" %in% names(raw_data)){
-        raw_data <- raw_data %>% 
-            dplyr::rowwise() %>%
-            dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", "))
-    }else{
-        raw_data <- raw_data %>% 
-            dplyr::mutate(medTimepoint = NA)
-    }
-    raw_data <- raw_data %>%
-        tibble::as_tibble(.) %>%
-        process_walk_data(.) %>%
-        dplyr::mutate(createdOn = as.POSIXct(
-            createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(
-            -all_of(REMOVE_FEATURES), 
-            -jsonPath, 
-            -fileHandleId) %>% 
-        dplyr::mutate(error = na_if(error, "NaN")) %>%
-        dplyr::inner_join(get_user_categorization(), by = c("healthCode"))
+    gait_features <- get_table(WALK_TBL, FILEHANDLE) %>%
+        clean_medication_timing_cols() %>%
+        clean_phone_info() %>%
+        process_walk_data()  %>%
+        dplyr::inner_join(get_user_categorization(), by = c("healthCode")) %>% 
+        segment_gait_data()
     
-    #' store walk30s features
-    write.table(raw_data, OUTPUT_FILE, sep = "\t", row.names=F, quote=F)
-    f <- sc$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
-    syn$store(f, activity = sc$Activity(
-        "retrieve raw walk features",
-        used = c(WALK_TBL),
-        executed = GIT_URL))
-    unlink(OUTPUT_FILE)
+    #' save all segment to synapse
+    purrr::map(names(gait_features), function(segment){
+        filename <- glue::glue(segment, "_", parsed_var$output)
+        write.table(segmented_gait_data[[segment]], 
+                    filename, sep = "\t", row.names=F, quote=F)
+        f <- sc$File(filename, OUTPUT_PARENT_ID)
+        syn$store(f, activity = sc$Activity(
+            "retrieve raw walk features",
+            used = c(WALK_TBL),
+            executed = GIT_URL))
+        unlink(OUTPUT_FILE)
+    })
 }
 
 main()
