@@ -88,7 +88,6 @@ REMOVE_FEATURES <- c("y_speed_of_gait", "x_speed_of_gait",
 ####################################
 #### instantiate python objects #### 
 ####################################
-reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
 gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
