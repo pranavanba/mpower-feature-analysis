@@ -201,7 +201,7 @@ main <- function(){
     #' save all segment to synapse
     purrr::map(names(gait_features), function(segment){
         filename <- glue::glue(segment, "_", parsed_var$output)
-        write.table(segmented_gait_data[[segment]], 
+        write.table(gait_features[[segment]], 
                     filename, sep = "\t", row.names=F, quote=F)
         f <- sc$File(filename, OUTPUT_PARENT_ID)
         syn$store(f, activity = sc$Activity(
