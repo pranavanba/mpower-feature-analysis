@@ -119,7 +119,7 @@ get_user_categorization <- function(){
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL} LIMIT 20"))
+    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL} LIMIT 50"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
                                 jsonPath = as.character(mapped_json_files))
