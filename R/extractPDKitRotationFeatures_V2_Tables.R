@@ -52,7 +52,7 @@ parse_argument <- function(){
     parser$add_argument("-p", 
                         "--parent_id", 
                         type="character", 
-                        default="syn24182621", 
+                        default="syn25381724", 
                         help="synapse parent id")
     parser$add_argument("-f", 
                         "--filehandle", 
@@ -75,17 +75,17 @@ GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILEHANDLE <- parsed_var$filehandle
-WINDOW_SIZE <- parsed_var$window_size
-SCRIPT_PATH <- file.path("R", "extractPDKitRotationFeatures_V2_Tables.R")
+WINDOW_SIZE <- as.integer(parsed_var$window_size)
+SCRIPT_PATH <- file.path(
+    "R", "extractPDKitRotationFeatures_V2_Tables.R")
 KEEP_METADATA <- c("recordId","healthCode",
-                   "createdOn", "appVersion",
-                   "phoneInfo","fileHandleId", 
-                   "jsonPath", "medTimepoint")
+                   "createdOn",
+                   "phoneInfo",
+                   "medTimepoint")
 
 ####################################
 #### instantiate python objects #### 
 ####################################
-reticulate::use_virtualenv(PYTHON_ENV, required = TRUE)
 gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
 sc <- reticulate::import("synapseclient")
 syn <- sc$login()
@@ -106,47 +106,39 @@ GIT_URL <- githubr::getPermlink(
 #' @returns joined table of filepath and filehandleID
 get_table <- function(synID, column){
     tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}
-                                            WHERE phoneInfo not like '%iOS%' LIMIT 10"))
+                                            WHERE phoneInfo not like '%iOS%' LIMIT 100"))
     mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
     mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
-                                jsonPath = as.character(mapped_json_files))
+                                filePath = as.character(mapped_json_files))
     joined_df <- tbl_entity$asDataFrame() %>% 
         dplyr::mutate(fileHandleId = as.character(.[[column]])) %>% 
         dplyr::left_join(mapped_json_files, by = c("fileHandleId"))
     return(joined_df)
 }
 
-clean_android_ts <- function(ts){
-    ts <- ts %>% 
-        dplyr::filter(stringr::str_detect(
-            sensorType, "accel|gyro|rotation")) %>% 
-        dplyr::mutate(sensorType = 
-                          ifelse(str_detect(sensorType, "accel"), 
-                                 "userAcceleration", sensorType),
-                      sensorType = 
-                          ifelse(str_detect(sensorType, "gyro|rotation"), 
-                                 "rotationRate", sensorType)) %>%
-        split(.$sensorType) %>%
-        purrr::map(., function(ts){
-            ts %>% 
-                dplyr::select(t = timestamp, x, y, z) %>% 
-                drop_na() %>%
-                dplyr::mutate_at(
-                    .vars = c("x", "y", "z"), 
-                    .funs = function(col){col/9.81})})
-    return(ts)
-}
-
-clean_ios_ts <- function(ts){
-    ts <- ts %>% 
-        dplyr::filter(stringr::str_detect(
-            sensorType, "userAcceleration|rotationRate")) %>% 
-        split(.$sensorType) %>%
-        purrr::map(., function(ts){
-            ts %>% 
-                dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
-                dplyr::select(t,x,y,z)})
-    return(ts)
+shape_sensor_data <- function(ts){
+    #' split to list
+    ts_list <- list()
+    ts_list$acceleration <- ts %>% 
+        dplyr::filter(
+            stringr::str_detect(tolower(sensorType), "^accel"))
+    ts_list$rotation <- ts %>% 
+        dplyr::filter(
+            stringr::str_detect(tolower(sensorType), "^rotation|^gyro"))
+    
+    #' parse rotation rate only
+    if((stringr::str_detect(
+        ts_list$rotation$sensorType, 
+        "^gyro|^rotationrate") %>% sum(.)) == 2){
+        ts_list$rotation <- ts_list$rotation %>% 
+            dplyr::filter(!stringr::str_detect(tolower(sensorType), "^gyro"))
+    }
+    
+    ts_list <- ts_list %>%
+        purrr::map(., ~(.x %>%
+                            dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
+                            dplyr::select(t,x,y,z)))
+    return(ts_list)
 }
 
 #' Entry-point function to parse each filepath of each recordIds
@@ -156,44 +148,55 @@ clean_ios_ts <- function(ts){
 process_walk_data <- function(data){
     features <- plyr::ddply(
         .data = data,
-        .variables = KEEP_METADATA,
-        .parallel = TRUE,
+        .variables = c("recordId", "createdOn", 
+                       "healthCode", "phoneInfo",
+                       "medTimepoint"),
+        .parallel = FALSE,
         .fun = function(row){
             tryCatch({ # capture common errors
-                ts <- jsonlite::fromJSON(row$jsonPath)
+                ts <- jsonlite::fromJSON(row$filePath)
                 if(nrow(ts) == 0){
                     stop("ERROR: sensor timeseries is empty")
                 }else{
-                    if(row$operatingSystem != "iOS"){
-                        ts <- ts %>% clean_android_ts(.)
-                    }else{
-                        ts <- ts %>% clean_ios_ts(.)
-                    }
-                    features <- gait_feature_py_obj$run_pipeline(
-                        ts$userAcceleration, ts$rotationRate)
+                    ts_list <- ts %>% shape_sensor_data(.)
+                    gait_feature_py_obj$run_pipeline(
+                        ts_list$acceleration, ts_list$rotation)
                 }
-                return(features)
             }, error = function(err){ # capture all other error
-                error_msg <- str_squish(str_replace_all(geterrmessage(), "\n", ""))
-                return(tibble(error = error_msg))})})
+                print(row$recordId)
+                error_msg <- stringr::str_squish(
+                    stringr::str_replace_all(geterrmessage(), "\n", ""))
+                return(tibble::tibble(error = error_msg))})})
     return(features)
+}
+#' function to check whether medication timepoint exist
+check_medTimepoint <- function(data){
+    if("answers.medicationTiming" %in% names(data)){
+        data %>% 
+            dplyr::rowwise() %>%
+            dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
+            dplyr::ungroup()
+    }else{
+        data
+    }
+}
+
+#' function to parse phone information
+parse_phoneInfo <- function(data){
+    data %>%
+        dplyr::mutate(
+            operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android"))
 }
 
 main <- function(){
     #' get raw data
     raw_data <- get_table(WALK_TBL, FILEHANDLE) %>% 
-        dplyr::rowwise() %>%
-        dplyr::mutate_at(vars(one_of('answers.medicationTiming'), 
-                              function(x){glue::glue_collapse(x, ", ")})) %>%
-        dplyr::mutate(
-            operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android")) %>%
-        tibble::as_tibble(.) %>%
-        process_walk_data(.) %>%
+        check_medTimepoint() %>%
+        parse_phoneInfo() %>%
+        process_walk_data() %>%
+        tibble::as_tibble() %>%
         dplyr::mutate(createdOn = as.POSIXct(
-            createdOn/1000, origin="1970-01-01")) %>%
-        dplyr::select(-fileHandleId, 
-                      -jsonPath,
-                      everything()) %>% 
+            createdOn/1000, origin="1970-01-01")) %>% 
         dplyr::mutate(error = na_if(error, "NaN"))
     
     #' store walk30s features
