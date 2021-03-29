@@ -7,11 +7,9 @@ RUN apt-get update -y\
     && apt-get install -y git
 
 ## R dependencies
-RUN R -e 'install.packages("synapser", repos = c("http://ran.synapse.org", "http://cran.fhcrc.org"))'\
-    && R -e 'install.packages("doMC")'\
+RUN R -e 'install.packages("doMC")'\
     && R -e 'devtools::install_github("brian-bot/githubr")'\
     && R -e 'install.packages("reticulate")'\
-    && R -e 'devtools::install_github("Sage-Bionetworks/mhealthtools")'\
     && R -e 'install.packages("plyr")'\
     && R -e 'install.packages("jsonlite")'\
     && R -e 'install.packages("argparse")'
