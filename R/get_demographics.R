@@ -1,8 +1,23 @@
 library(reticulate)
 library(tidyverse)
+library(githubr)
+
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$login()
 
 DEMO_TBL_V2 <- "syn15673379"
 CURRENT_YEAR <- lubridate::year(lubridate::now())
+
+####################################
+#### instantiate github #### 
+####################################
+GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+GIT_TOKEN_PATH <- "~/git_token.txt"
+SCRIPT_PATH <- file.path("R", "get_demographics.R")
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
+OUTPUT_FILE <- "demographics_v2.tsv"
+OUTPUT_PARENT_ID <- "syn25421183"
 
 #' get demographic info, average age for multiple records
 #' get most recent entry for sex, createdOn, diagnosis
@@ -30,4 +45,12 @@ get_demographics_v2 <- function(){
     return(demo)
 }
 
-demo_v2 <- get_demographics_v2()
+demo_v2 <- get_demographics_v2() %>% 
+    write_tsv(., OUTPUT_FILE)
+f <- synapseclient$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
+syn$store(
+    f, activity = synapseclient$Activity(
+        "get demographics",
+        used = c(DEMO_TBL_V2),
+        executed = GIT_URL))
+unlink(OUTPUT_FILE)
