@@ -25,6 +25,7 @@ OUTPUT_REF <- list(
         walk_feature_id = "syn25392734",
         rot_feature_id = "syn25392732")
 )
+OUTPUT_PARENT_ID <- "syn25421278"
 
 
 #' function to summarize features
@@ -52,7 +53,6 @@ purrr::map(names(OUTPUT_REF), function(walkType){
     walk_id <- OUTPUT_REF[[walkType]]$walk_feature_id
     rot_id <- OUTPUT_REF[[walkType]]$rot_feature_id
     output_name <- OUTPUT_REF[[walkType]]$output_file
-    
     walk_data <- fread(syn$get(walk_id)$path)
     rotation_data <- fread(syn$get(rot_id)$path)
     summarize_features(walk_data, rotation_data) %>% 
@@ -64,21 +64,7 @@ purrr::map(names(OUTPUT_REF), function(walkType){
             used = c(walk_id, rot_id),
             executed = GIT_URL))
     unlink(output_name)
-    
 })
-
-walk_data <- fread(syn$get("syn25392705")$path)
-rotation_data <- fread(syn$get("syn25392703")$path)
-
-summarize_features(walk_data, rotation_data) %>% 
-    write_tsv(., OUTPUT_FILE)
-f <- synapseclient$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
-syn$store(
-    f, activity = synapseclient$Activity(
-        "get aggregated score",
-        used = c(DEMO_TBL_V2),
-        executed = GIT_URL))
-unlink(OUTPUT_FILE)
 
 
 
