@@ -17,11 +17,11 @@ setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 OUTPUT_REF <- list(
     active = list(
-        output_file = "aggregated_active_walk_score_v2.tsv",
+        output_file = "aggregated_active_walk_score_v2_remove_first_windows.tsv",
         walk_feature_id = "syn25392705",
         rot_feature_id = "syn25392703"),
     passive = list(
-        output_file = "aggregated_passive_walk_score_v2.tsv",
+        output_file = "aggregated_passive_walk_score_v2_remove_first_windows.tsv",
         walk_feature_id = "syn25392734",
         rot_feature_id = "syn25392732")
 )
@@ -33,18 +33,22 @@ OUTPUT_PARENT_ID <- "syn25421278"
 #' @param rotation_data the rotation data from segmentation
 #' @return aggregated data
 summarize_features <- function(walk_data, rotation_data){
-    features <- walk_data %>% dplyr::select(matches("^x|^y|^z|^AA")) %>% names()
+    features <- walk_data %>% 
+        dplyr::select(matches("^x|^y|^z|^AA")) %>% names()
     summarize_walk <- walk_data %>% 
         dplyr::group_by(healthCode) %>%
         dplyr::mutate(nrecords = n_distinct(recordId)) %>%
         dplyr::group_by(healthCode, nrecords) %>%
-        dplyr::summarise_at(features, list("md" = median, "iqr" = IQR), na.rm = TRUE)
+        dplyr::summarise_at(features, list("md" = median, 
+                                           "iqr" = IQR,
+                                           "var" = var), na.rm = TRUE)
     
     summarize_rotation <- rotation_data %>% 
         dplyr::group_by(healthCode) %>%
         dplyr::summarise_at(c("rotation_omega"), 
                             list("rotation_omega_md" = median, 
-                                 "rotation_omega_iqr" = IQR), na.rm = TRUE)
+                                 "rotation_omega_iqr" = IQR,
+                                 "rotation_omega_var" = var), na.rm = TRUE)
     summarize_walk %>% 
         dplyr::left_join(summarize_rotation, by = c("healthCode"))
 }
