@@ -1,22 +1,22 @@
 library(tidyverse)
-library(plyr)
 library(jsonlite)
 library(doMC)
 library(githubr)
 library(jsonlite)
 library(mhealthtools)
-library(synapser)
+library(reticulate)
 
-synLogin()
-registerDoMC(detectCores())
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$login()
 
 ####################################
 #### Global Variables ##############
 ####################################
 GIT_PATH <- "~/git_token.txt"
 TAP_TBL <- "syn15673381"
-KEEP_METADATA <- c("recordId",
-                   "healthCode",
+FILE_COLUMNS <- c("right_tapping.samples", "left_tapping.samples")
+UID <- c("recordId")
+KEEP_METADATA <- c("healthCode",
                    "createdOn", 
                    "appVersion",
                    "phoneInfo")
@@ -31,37 +31,48 @@ GIT_URL <- githubr::getPermlink(
     "arytontediarjo/feature_extraction_codes", 
     repositoryPath = 'R/extractTap_V2_Tables.R')
 
-OUTPUT.PARENT.ID <- "syn22294858"
-OUTPUT.FILE <- "mhealthtools_tap_features_mpowerV2.tsv"
+OUTPUT_PARENT_ID <- "syn25691532"
+OUTPUT_FILE <- "mhealthtools_tap_features_mpowerV2.tsv"
 
 #' function to get table, and merge filepaths with filehandleIDs
 #' Note: Most recent timepoint will be taken for each participantID
 #' @params synID: table entity synapse ID
 #' @returns joined table of filepath and filehandleID
-retrieve.tables <- function(synID, filehandles, keepCols = c()){
-    tbl.entity <- synTableQuery(sprintf("SELECT * FROM %s", synID)) 
-    mapped.json.files <- synDownloadTableColumns(tbl.entity, 
-                                                 columns = filehandles)
-    tbl.df <- tbl.entity$asDataFrame()
-    get.mapping <- purrr::map(filehandles, function(filehandle){
-        mapped.json.files <- dplyr::tibble(
-            !!filehandle := names(mapped.json.files),
-            "jsonPath" = as.character(mapped.json.files))
-        joined.df <- tbl.df %>% 
-            dplyr::mutate(fileHandleId = as.character(.[[filehandle]])) %>% 
-            dplyr::left_join(mapped.json.files, by = c(filehandle)) %>%
-            dplyr::rename(!!paste0(filehandle, "_jsonPath") := jsonPath)}) %>%
-        purrr::reduce(dplyr::full_join, by = c("recordId")) %>%
-        dplyr::select(recordId, ends_with("_jsonPath"))
-    merged.tbl <- tbl.df %>% 
-        dplyr::left_join(get.mapping, by = c("recordId")) %>%
-        dplyr::select(all_of(keepCols),
-                      ends_with("_jsonPath"))
-    return(merged.tbl)
+get_tapping_tables <- function(){
+    # get table entity
+    entity <- syn$tableQuery(glue::glue("SELECT * FROM {TAP_TBL} LIMIT 5"))
+    
+    # shape table
+    table <- entity$asDataFrame() %>%
+        tibble::as_tibble(.) %>%
+        tidyr::pivot_longer(cols = all_of(FILE_COLUMNS), 
+                            names_to = "fileColumnName", 
+                            values_to = "fileHandleId") %>%
+        dplyr::filter(!is.na(fileHandleId)) %>%
+        dplyr::mutate(
+            createdOn = as.POSIXct(createdOn/1000, 
+                                   origin="1970-01-01"),
+            fileHandleId = as.character(fileHandleId))
+    
+    # download all table columns
+    result <- syn$downloadTableColumns(
+        table = entity, 
+        columns = FILE_COLUMNS) %>%
+        tibble::enframe(.) %>%
+        tidyr::unnest(value) %>%
+        dplyr::select(
+            fileHandleId = name, 
+            filePath = value) %>%
+        dplyr::mutate(filePath = unlist(filePath)) %>%
+        dplyr::inner_join(table, by = c("fileHandleId")) %>%
+        dplyr::select(all_of(UID), all_of(KEEP_METADATA), 
+                      fileColumnName, filePath)
+    return(result)
 }
 
 featurize_tapping <- function(data){
-    data <- data %>% unnest(location) %>% 
+    data <- data %>% 
+        tidyr::unnest(location) %>% 
         dplyr::group_by(timestamp) %>% 
         dplyr::mutate(col=seq_along(timestamp)) %>% #add a column indicator
         tidyr::spread(key=col, value=location) %>% 
@@ -76,13 +87,13 @@ featurize_tapping <- function(data){
     return(features)
 }
 
-process.tapping.samples <- function(data, col){
+process_tapping_samples <- function(data){
     features <- plyr::ddply(
         .data = data,
-        .variables = all_of(KEEP_METADATA),
+        .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
         .fun = function(row){
             tryCatch({
-                data <- jsonlite::fromJSON(row[[col]])
+                data <- jsonlite::fromJSON(row$filePath)
                 if(nrow(data) == 0){
                     stop()
                 }
@@ -93,35 +104,18 @@ process.tapping.samples <- function(data, col){
 }
 
 main <-  function(){
-    result <- list()
-    data <- retrieve.tables(TAP_TBL, 
-                            filehandles = c("right_tapping.samples", "left_tapping.samples"),
-                            keepCols = KEEP_METADATA)
+    features <- get_tapping_tables() %>% 
+        process_tapping_samples()  %>%
+        readr::write_tsv(., OUTPUT_FILE)
     
-    result$left <- data %>% 
-        process.tapping.samples(., "left_tapping.samples_jsonPath") %>% 
-        dplyr::rename_with(.cols = -all_of(KEEP_METADATA), 
-                           .fn = function(x){paste0("left_", x)})
-    
-    result$right <- data %>% 
-        process.tapping.samples(., "right_tapping.samples_jsonPath") %>% 
-        dplyr::rename_with(.cols = -all_of(KEEP_METADATA), 
-                           .fn = function(x){paste0("right_", x)})
-    
-    result <- result %>% 
-        purrr::reduce(dplyr::full_join, 
-                      by = all_of(KEEP_METADATA)) %>%
-        write.table(., OUTPUT.FILE, 
-                    sep = "\t",row.names=F, quote=F)
-    
-    file <- synapser::File(
-        OUTPUT.FILE, 
-        parent=OUTPUT.PARENT.ID)
-    activity <- Activity(
+    file <- synapseclient$File(
+        OUTPUT_FILE, 
+        parent=OUTPUT_PARENT_ID)
+    activity <- synapseclient$Activity(
         "extract tap features for mPower V2", 
         executed = GIT_URL,
         used = c(TAP_TBL))
-    synStore(file, activity = activity)
+    syn$store(file, activity = activity)
     unlink(OUTPUT.FILE)
     
 }
