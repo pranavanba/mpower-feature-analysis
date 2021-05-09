@@ -5,6 +5,7 @@ library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
+source("R/utils.R")
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
@@ -19,7 +20,9 @@ UID <- c("recordId")
 KEEP_METADATA <- c("healthCode",
                    "createdOn", 
                    "appVersion",
-                   "phoneInfo")
+                   "phoneInfo",
+                   "operatingSystem",
+                   "medTimepoint")
 
 ##############################
 # Outputs
@@ -32,43 +35,9 @@ GIT_URL <- githubr::getPermlink(
     repositoryPath = 'R/extractTap_V2_Tables.R')
 
 OUTPUT_PARENT_ID <- "syn25691532"
-OUTPUT_FILE <- "mhealthtools_tap_features_mpowerV2.tsv"
+OUTPUT_FILE <- "mhealthtools_tapping_features_mpowerV2.tsv"
 
-#' function to get table, and merge filepaths with filehandleIDs
-#' Note: Most recent timepoint will be taken for each participantID
-#' @params synID: table entity synapse ID
-#' @returns joined table of filepath and filehandleID
-get_tapping_tables <- function(){
-    # get table entity
-    entity <- syn$tableQuery(glue::glue("SELECT * FROM {TAP_TBL} LIMIT 5"))
-    
-    # shape table
-    table <- entity$asDataFrame() %>%
-        tibble::as_tibble(.) %>%
-        tidyr::pivot_longer(cols = all_of(FILE_COLUMNS), 
-                            names_to = "fileColumnName", 
-                            values_to = "fileHandleId") %>%
-        dplyr::filter(!is.na(fileHandleId)) %>%
-        dplyr::mutate(
-            createdOn = as.POSIXct(createdOn/1000, 
-                                   origin="1970-01-01"),
-            fileHandleId = as.character(fileHandleId))
-    
-    # download all table columns
-    result <- syn$downloadTableColumns(
-        table = entity, 
-        columns = FILE_COLUMNS) %>%
-        tibble::enframe(.) %>%
-        tidyr::unnest(value) %>%
-        dplyr::select(
-            fileHandleId = name, 
-            filePath = value) %>%
-        dplyr::mutate(filePath = unlist(filePath)) %>%
-        dplyr::inner_join(table, by = c("fileHandleId")) %>%
-        dplyr::select(all_of(UID), all_of(KEEP_METADATA), 
-                      fileColumnName, filePath)
-    return(result)
-}
+
 
 featurize_tapping <- function(data){
     data <- data %>% 
@@ -87,10 +56,11 @@ featurize_tapping <- function(data){
     return(features)
 }
 
-process_tapping_samples <- function(data){
+process_tapping_samples <- function(data, parallel = FALSE){
     features <- plyr::ddply(
         .data = data,
         .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
+        .parallel = parallel,
         .fun = function(row){
             tryCatch({
                 data <- jsonlite::fromJSON(row$filePath)
@@ -99,15 +69,13 @@ process_tapping_samples <- function(data){
                 }
                 return(featurize_tapping(data))
             }, error = function(err){
-                return(tibble(error = "empty tapping samples"))})})
+                return(tibble(error = "empty tapping samples"))})}) %>% 
+        dplyr::mutate(across(c(UID, KEEP_METADATA), as.character))
     return(features)
 }
 
-main <-  function(){
-    features <- get_tapping_tables() %>% 
-        process_tapping_samples()  %>%
-        readr::write_tsv(., OUTPUT_FILE)
-    
+save_to_synapse <- function(data){
+    write_file <- readr::write_tsv(data, OUTPUT_FILE)
     file <- synapseclient$File(
         OUTPUT_FILE, 
         parent=OUTPUT_PARENT_ID)
@@ -116,10 +84,17 @@ main <-  function(){
         executed = GIT_URL,
         used = c(TAP_TBL))
     syn$store(file, activity = activity)
-    unlink(OUTPUT.FILE)
-    
+    unlink(OUTPUT_FILE)
+}
+
+main <-  function(){
+    features <- get_table(syn = syn, synapse_tbl = TAP_TBL,
+                          file_columns = FILE_COLUMNS,
+                          uid = UID, keep_metadata = KEEP_METADATA) %>%
+        parse_medTimepoint() %>%
+        parse_phoneInfo() %>%
+        process_tapping_samples() %>% 
+        save_to_synapse()
 }
 
 main()
-
-

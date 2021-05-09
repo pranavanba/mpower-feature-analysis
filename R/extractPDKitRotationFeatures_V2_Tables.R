@@ -44,22 +44,22 @@ parse_argument <- function(){
     parser$add_argument("-s", 
                         "--tbl_source", 
                         type="character", 
-                        default="syn17022539", 
+                        default="syn12514611", 
                         help="synId table source")
     parser$add_argument("-o", 
                         "--output", 
                         type="character", 
-                        default="PDkitRotation_walk30s_features_mPowerV2.tsv", 
+                        default="PDkitRotation_walk30s_features_mpowerV2.tsv", 
                         help="synId table source")
     parser$add_argument("-p", 
                         "--parent_id", 
                         type="character", 
-                        default="syn25381724", 
+                        default="syn25691532", 
                         help="synapse parent id")
     parser$add_argument("-f", 
                         "--filehandle", 
                         type="character", 
-                        default="walk_motion.json", 
+                        default=c("walk_motion.json", "balance_motion.json"),
                         help="synapse parent id")
     parser$add_argument("-w",
                         "--window_size",
@@ -72,15 +72,16 @@ parse_argument <- function(){
 #' global variables
 SCRIPT_PATH <- file.path(
     "R", "extractPDKitRotationFeatures_V2_Tables.R")
-KEEP_METADATA <- c("recordId",
-                   "healthCode",
-                   "createdOn",
+UID <- c("recordId")
+KEEP_METADATA <- c("healthCode",
+                   "createdOn", 
+                   "appVersion",
                    "phoneInfo",
+                   "operatingSystem",
                    "medTimepoint")
 REMOVE_FEATURES <- c("y_speed_of_gait", "x_speed_of_gait", 
                      "z_speed_of_gait", "AA_stride_regularity",
                      "AA_step_regularity", "AA_symmetry")
-USER_CATEGORIZATION <- "syn17074533"
 
 #' parse arguments
 parsed_var <- parse_argument()
@@ -90,15 +91,15 @@ GIT_TOKEN_PATH <- parsed_var$git_token
 GIT_REPO <- parsed_var$git_repo
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
-FILEHANDLE <- parsed_var$filehandle
+FILE_COLUMNS <- parsed_var$filehandle
 WINDOW_SIZE <- as.integer(parsed_var$window_size)
 
 ####################################
 #### instantiate python objects #### 
 ####################################
 gait_feature_py_obj <- reticulate::import("PDKitRotationFeatures")$gait_module$GaitFeatures(sensor_window_size = WINDOW_SIZE)
-sc <- reticulate::import("synapseclient")
-syn <- sc$login()
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$login()
 
 ####################################
 #### instantiate github #### 
@@ -107,33 +108,7 @@ setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(
     GIT_REPO, repositoryPath = SCRIPT_PATH)
 
-####################################
-## Helpers
-####################################
-#' get user categorization 
-get_user_categorization <- function(){
-    fread(syn$get(USER_CATEGORIZATION)$path, sep = ",") %>%
-        tibble::as_tibble(.) %>% 
-        dplyr::filter(userType != "test")
-}
-
-
-#' function to get table, and merge filepaths with filehandleIDs
-#' Note: Most recent timepoint will be taken for each participantID
-#' @params synID: table entity synapse ID
-#' @returns joined table of filepath and filehandleID
-get_table <- function(synID, column){
-    tbl_entity <- syn$tableQuery(glue::glue("SELECT * FROM {WALK_TBL}"))
-    mapped_json_files <- syn$downloadTableColumns(tbl_entity, columns = c(column))
-    mapped_json_files <- tibble(fileHandleId = names(mapped_json_files),
-                                filePath = as.character(mapped_json_files))
-    joined_df <- tbl_entity$asDataFrame() %>% 
-        dplyr::mutate(fileHandleId = as.character(.[[column]])) %>% 
-        dplyr::left_join(mapped_json_files, by = c("fileHandleId"))
-    return(joined_df)
-}
-
-shape_sensor_data <- function(ts){
+shape_gait_sensor_data <- function(ts){
     #' split to list
     ts_list <- list()
     ts_list$acceleration <- ts %>% 
@@ -162,22 +137,18 @@ shape_sensor_data <- function(ts){
 #' walk data and featurize each record using featurize walk data function
 #' @params data: dataframe containing filepaths
 #' @returns featurized walk data for each participant 
-process_walk_data <- function(data){
+process_walk_samples <- function(data, parallel=FALSE){
     features <- plyr::ddply(
         .data = data,
-        .variables = c("recordId", 
-                       "createdOn", 
-                       "healthCode", 
-                       "phoneInfo",
-                       "medTimepoint"),
-        .parallel = FALSE,
+        .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
+        .parallel = parallel,
         .fun = function(row){
             tryCatch({ # capture common errors
                 ts <- jsonlite::fromJSON(row$filePath)
                 if(nrow(ts) == 0){
                     stop("ERROR: sensor timeseries is empty")
                 }else{
-                    ts_list <- ts %>% shape_sensor_data(.)
+                    ts_list <- ts %>% shape_gait_sensor_data()
                     gait_feature_py_obj$run_pipeline(
                         ts_list$acceleration, ts_list$rotation)
                 }
@@ -185,57 +156,47 @@ process_walk_data <- function(data){
                 print(row$recordId)
                 error_msg <- stringr::str_squish(
                     stringr::str_replace_all(geterrmessage(), "\n", ""))
-                return(tibble::tibble(error = error_msg))})})
+                return(tibble::tibble(error = error_msg))})}) %>%
+        dplyr::mutate_at(all_of(KEEP_METADATA), as.character) %>% 
+        replace(., . =="NaN", NA)
     return(features)
 }
 
-
-#' function to check whether medication timepoint exist
-check_medTimepoint <- function(data){
-    if("answers.medicationTiming" %in% names(data)){
-        data %>% 
-            dplyr::rowwise() %>%
-            dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
-            dplyr::ungroup()
-    }else{
-        data %>% 
-            dplyr::mutate(medTimepoint = NA)
-    }
+#' function to segment gait data
+segment_gait_data <- function(data){
+    result <- list()
+    data <- data %>% 
+        dplyr::filter(is.na(error))
+    result$rotation_segment <- data %>% 
+        dplyr::filter(!is.na(rotation_omega))
+    result$walk_segment <- data %>% 
+        dplyr::filter(is.na(rotation_omega)) 
+    return(result)
 }
 
-#' function to parse phone information
-parse_phoneInfo <- function(data){
-    data %>%
-        dplyr::mutate(
-            operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+save_gait_segments <- function(data){
+        purrr::walk(names(data), function(segment){
+            filename <- glue::glue(segment, "_", parsed_var$output)
+            write_file <- readr::write_tsv(data[[segment]], filename)
+            f <- synapseclient$File(filename, OUTPUT_PARENT_ID)
+            save_to_synapse <- syn$store(f, activity = synapseclient$Activity(
+                "retrieve raw walk features",
+                used = c(WALK_TBL),
+                executed = GIT_URL))
+            unlink(filename)
+        })
 }
-
 
 main <- function(){
     #' get raw data
-    gait_features <- get_table(WALK_TBL, FILEHANDLE) %>% 
-        check_medTimepoint() %>%
+    gait_features <- get_table(syn = syn, synapse_tbl = WALK_TBL,
+                               file_columns = FILE_COLUMNS,
+                               uid = UID, keep_metadata = KEEP_METADATA) %>% 
+        parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_walk_data() %>%
-        tibble::as_tibble() %>%
-        dplyr::mutate(createdOn = as.POSIXct(
-            createdOn/1000, origin="1970-01-01")) %>% 
-        dplyr::mutate(error = na_if(error, "NaN")) %>%
-        dplyr::inner_join(get_user_categorization(), by = c("healthCode")) %>% 
-        segment_gait_data()
-    
-    #' save all segment to synapse
-    purrr::map(names(gait_features), function(segment){
-        filename <- glue::glue(segment, "_", parsed_var$output)
-        write.table(gait_features[[segment]], 
-                    filename, sep = "\t", row.names=F, quote=F)
-        f <- sc$File(filename, OUTPUT_PARENT_ID)
-        syn$store(f, activity = sc$Activity(
-            "retrieve raw walk features",
-            used = c(WALK_TBL),
-            executed = GIT_URL))
-        unlink(filename)
-    })
+        process_walk_samples() %>%
+        segment_gait_data() %>%
+        save_gait_segments()
 }
 
 main()
