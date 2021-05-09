@@ -18,6 +18,8 @@ setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 OUTPUT_FILE <- "demographics_v2.tsv"
 OUTPUT_PARENT_ID <- "syn25421183"
+diagnosis_levels <- c("no_answer", "control", "parkinsons")
+sex_levels <- c("no_answer", "male", "female")
 
 #' get demographic info, average age for multiple records
 #' get most recent entry for sex, createdOn, diagnosis
@@ -30,18 +32,31 @@ get_demographics_v2 <- function(){
         dplyr::mutate(age = CURRENT_YEAR - birthYear,
                       createdOn = as.POSIXct(createdOn/1000, origin="1970-01-01"),
                       operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "ios", "android")) %>%
-        dplyr::arrange(desc(createdOn)) %>%
-        distinct(healthCode, .keep_all = TRUE) %>%
+        dplyr::arrange(createdOn) %>%
         dplyr::rowwise() %>%
-        dplyr::mutate(sex = glue::glue_collapse(sex, sep = ","),
-                      diagnosis = glue::glue_collapse(diagnosis, sep = ",")) %>%
+        dplyr::mutate(
+            sex = glue::glue_collapse(sex, sep = ","),
+            diagnosis = glue::glue_collapse(diagnosis, sep = ",")) %>%
         dplyr::ungroup() %>%
+        dplyr::select(healthCode, 
+                      createdOn, age, 
+                      sex, diagnosis, 
+                      operatingSystem, 
+                      phoneInfo) %>%
+        dplyr::mutate(
+            diagnosis = ifelse(is.na(diagnosis), "no_answer", diagnosis),
+            sex = ifelse(is.na(sex), "no_answer", sex)) %>%
+        dplyr::mutate(
+            diagnosis = factor(
+                diagnosis, order = T, levels = diagnosis_levels),
+            sex = factor(
+                sex, order = T, levels = sex_levels)) %>%
         dplyr::group_by(healthCode) %>%
         dplyr::summarise(age = mean(age, na.rm = TRUE),
-                         sex = first(sex),
-                         diagnosis = first(diagnosis),
-                         phoneInfo = first(phoneInfo),
-                         operatingSystem = first(operatingSystem))
+                         sex = max(sex),
+                         diagnosis = max(diagnosis),
+                         phoneInfo = last(phoneInfo),
+                         operatingSystem = last(operatingSystem))
     return(demo)
 }
 
