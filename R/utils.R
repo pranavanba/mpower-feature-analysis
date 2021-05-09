@@ -1,32 +1,49 @@
-#' function to segment gait data
-segment_gait_data <- function(data){
-  result <- list()
-  data <- data %>% 
-    dplyr::filter(is.na(error))
-  result$rotation_segment <- data %>% 
-    dplyr::filter(!is.na(rotation_omega))
-  result$walk_segment <- data %>% 
-    dplyr::filter(is.na(rotation_omega)) 
-  return(result)
-}
-
-clean_medication_timing_cols <- function(data){
-  data <- data %>%
-    dplyr::mutate(
-      operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+#' function to check whether medication timepoint exist
+parse_medTimepoint <- function(data){
   if("answers.medicationTiming" %in% names(data)){
-    data <- data %>% 
+    data %>% 
       dplyr::rowwise() %>%
-      dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", "))
+      dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
+      dplyr::ungroup()
   }else{
-    data <- data %>% 
+    data %>% 
       dplyr::mutate(medTimepoint = NA)
   }
-  return(data)
 }
 
-clean_phone_info <- function(data){
+#' function to parse phone information
+parse_phoneInfo <- function(data){
   data %>%
     dplyr::mutate(
-      operatingSystem = ifelse(stringr::str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+      operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+}
+
+get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
+  # get table entity
+  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} limit 5"))
+  
+  # shape table
+  table <- entity$asDataFrame() %>%
+    tibble::as_tibble(.) %>%
+    tidyr::pivot_longer(cols = all_of(file_columns), 
+                        names_to = "fileColumnName", 
+                        values_to = "fileHandleId") %>%
+    dplyr::filter(!is.na(fileHandleId)) %>%
+    dplyr::mutate(
+      createdOn = as.POSIXct(createdOn/1000, 
+                             origin="1970-01-01"),
+      fileHandleId = as.character(fileHandleId))
+  
+  # download all table columns
+  result <- syn$downloadTableColumns(
+    table = entity, 
+    columns = file_columns) %>%
+    tibble::enframe(.) %>%
+    tidyr::unnest(value) %>%
+    dplyr::select(
+      fileHandleId = name, 
+      filePath = value) %>%
+    dplyr::mutate(filePath = unlist(filePath)) %>%
+    dplyr::inner_join(table, by = c("fileHandleId"))
+  return(result)
 }
