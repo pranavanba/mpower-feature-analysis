@@ -17,7 +17,7 @@ SCRIPT_PATH <- file.path("R", "get_demographics.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 OUTPUT_FILE <- "demographics_v2.tsv"
-OUTPUT_PARENT_ID <- "syn25421183"
+OUTPUT_PARENT_ID <- "syn25691532"
 diagnosis_levels <- c("no_answer", "control", "parkinsons")
 sex_levels <- c("no_answer", "male", "female")
 
@@ -60,12 +60,23 @@ get_demographics_v2 <- function(){
     return(demo)
 }
 
-demo_v2 <- get_demographics_v2() %>% 
-    write_tsv(., OUTPUT_FILE)
-f <- synapseclient$File(OUTPUT_FILE, OUTPUT_PARENT_ID)
-syn$store(
-    f, activity = synapseclient$Activity(
-        "get demographics",
-        used = c(DEMO_TBL_V2),
-        executed = GIT_URL))
-unlink(OUTPUT_FILE)
+save_to_synapse <- function(data){
+    write_file <- readr::write_tsv(data, OUTPUT_FILE)
+    file <- synapseclient$File(
+        OUTPUT_FILE, 
+        parent=OUTPUT_PARENT_ID)
+    activity <- synapseclient$Activity(
+        "extract demographics for mPower V2", 
+        executed = GIT_URL,
+        used = c(DEMO_TBL_V2))
+    syn$store(file, activity = activity)
+    unlink(OUTPUT_FILE)
+}
+
+
+main <- function(){
+    demo_v2 <- get_demographics_v2() %>% 
+        save_to_synapse()
+}
+
+main()
