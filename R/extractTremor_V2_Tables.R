@@ -23,6 +23,7 @@ KEEP_METADATA <- c("healthCode",
                    "phoneInfo",
                    "operatingSystem",
                    "medTimepoint")
+NAME <- "extract tremor features"
 
 ##############################
 # Outputs
@@ -106,6 +107,19 @@ process_tremor_samples <- function(data, parallel=FALSE){
     return(features)
 }
 
+save_to_synapse <- function(data){
+    write_file <- readr::write_tsv(data, OUTPUT_FILE)
+    file <- synapseclient$File(
+        OUTPUT_FILE, 
+        parent=OUTPUT_PARENT_ID)
+    activity <- synapseclient$Activity(
+        name = NAME, 
+        executed = GIT_URL,
+        used = c(TREMOR_TBL))
+    syn$store(file, activity = activity)
+    unlink(OUTPUT_FILE)
+}
+
 main <- function(){
     #' get raw data
     tremor_features <- get_table(syn = syn, synapse_tbl = TREMOR_TBL,
@@ -113,5 +127,8 @@ main <- function(){
                                uid = UID, keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_tremor_samples()
+        process_tremor_samples() %>% 
+        save_to_synapse()
 }
+
+main()
