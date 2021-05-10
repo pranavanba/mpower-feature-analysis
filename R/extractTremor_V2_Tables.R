@@ -1,0 +1,117 @@
+library(tidyverse)
+library(jsonlite)
+library(doMC)
+library(githubr)
+library(jsonlite)
+library(mhealthtools)
+library(reticulate)
+source("R/utils.R")
+
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$login()
+
+####################################
+#### Global Variables ##############
+####################################
+GIT_PATH <- "~/git_token.txt"
+TREMOR_TBL <- "syn12977322"
+FILE_COLUMNS <- c("right_motion.json", "left_motion.json")
+UID <- c("recordId")
+KEEP_METADATA <- c("healthCode",
+                   "createdOn", 
+                   "appVersion",
+                   "phoneInfo",
+                   "operatingSystem",
+                   "medTimepoint")
+
+##############################
+# Outputs
+##############################
+setGithubToken(readLines("~/git_token.txt"))
+GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+SCRIPT_NAME <- "extractTremor_V2_Tables.R"
+GIT_URL <- githubr::getPermlink(
+    "arytontediarjo/feature_extraction_codes", 
+    repositoryPath = 'R/extractTremor_V2_Tables.R')
+
+OUTPUT_PARENT_ID <- "syn25691532"
+OUTPUT_FILE <- "mhealthtools_tremor_features_mpowerV2.tsv"
+
+
+search_gyro_accel <- function(ts){
+    #' split to list
+    ts_list <- list()
+    ts_list$acceleration <- ts %>% 
+        dplyr::filter(
+            stringr::str_detect(tolower(sensorType), "^accel"))
+    ts_list$rotation <- ts %>% 
+        dplyr::filter(
+            stringr::str_detect(tolower(sensorType), "^rotation|^gyro"))
+    
+    #' parse rotation rate only
+    if((stringr::str_detect(
+        ts_list$rotation$sensorType, 
+        "^gyro|^rotationrate") %>% sum(.)) == 2){
+        ts_list$rotation <- ts_list$rotation %>% 
+            dplyr::filter(!stringr::str_detect(tolower(sensorType), "^gyro"))
+    }
+    
+    ts_list <- ts_list %>%
+        purrr::map(., ~(.x %>%
+                            dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
+                            dplyr::select(t,x,y,z)))
+    return(ts_list)
+}
+
+
+#' Entry-point function to parse each filepath of each recordIds
+#' walk data and featurize each record using featurize walk data function
+#' @params data: dataframe containing filepaths
+#' @returns featurized walk data for each participant 
+process_tremor_samples <- function(data, parallel=FALSE){
+    features <- plyr::ddply(
+        .data = data,
+        .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
+        .parallel = parallel,
+        .fun = function(row){
+            tryCatch({ # capture common errors
+                ts <- jsonlite::fromJSON(row$filePath)
+                if(nrow(ts) == 0){
+                    stop("ERROR: sensor timeseries is empty")
+                }else{
+                    ts_list <- ts %>% search_gyro_accel()
+                    features <- mhealthtools::get_tremor_features(
+                        accelerometer_data = ts_list$acceleration,
+                        gyroscope_data = ts_list$rotation,
+                        time_filter = c(5,25), 
+                        window_length = 100,
+                        window_overlap = 0.25,
+                        frequency_filter = c(3, 15),
+                        detrend = TRUE,
+                        funs = c(mhealthtools::time_domain_summary,
+                                 mhealthtools::frequency_domain_summary))
+                    if (is.null(features$error) && !is.null(features$extracted_features)) {
+                        features <- features$extracted_features
+                        features$error <- NA
+                    } else {
+                        features <- features$error
+                    }
+                    return(features)
+                }
+            }, error = function(err){ # capture all other error
+                error_msg <- stringr::str_squish(
+                    stringr::str_replace_all(geterrmessage(), "\n", ""))
+                return(tibble::tibble(error = error_msg))})}) %>%
+        dplyr::mutate_at(all_of(KEEP_METADATA), as.character)
+    return(features)
+}
+
+main <- function(){
+    #' get raw data
+    tremor_features <- get_table(syn = syn, synapse_tbl = TREMOR_TBL,
+                               file_columns = FILE_COLUMNS,
+                               uid = UID, keep_metadata = KEEP_METADATA) %>% 
+        parse_medTimepoint() %>%
+        parse_phoneInfo() %>%
+        process_tremor_samples()
+}

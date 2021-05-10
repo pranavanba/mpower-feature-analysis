@@ -37,8 +37,6 @@ GIT_URL <- githubr::getPermlink(
 OUTPUT_PARENT_ID <- "syn25691532"
 OUTPUT_FILE <- "mhealthtools_tapping_features_mpowerV2.tsv"
 
-
-
 featurize_tapping <- function(data){
     data <- data %>% 
         tidyr::unnest(location) %>% 
