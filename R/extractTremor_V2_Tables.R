@@ -127,7 +127,7 @@ main <- function(){
                                uid = UID, keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_tremor_samples() %>% 
+        process_tremor_samples(parallel = TRUE) %>% 
         save_to_synapse()
 }
 
