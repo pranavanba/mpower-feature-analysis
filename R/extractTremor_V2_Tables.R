@@ -6,6 +6,7 @@ library(jsonlite)
 library(mhealthtools)
 library(reticulate)
 source("R/utils.R")
+registerDoMC(detectCores())
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
