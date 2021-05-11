@@ -93,6 +93,7 @@ OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 FILE_COLUMNS <- parsed_var$filehandle
 WINDOW_SIZE <- as.integer(parsed_var$window_size)
+PARALLEL <- TRUE
 
 ####################################
 #### instantiate python objects #### 
@@ -193,7 +194,7 @@ main <- function(){
                                uid = UID, keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_walk_samples() %>%
+        process_walk_samples(parallel = PARALLEL) %>%
         segment_gait_data() %>%
         save_gait_segments()
 }

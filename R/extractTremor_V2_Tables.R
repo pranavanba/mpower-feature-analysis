@@ -24,6 +24,7 @@ KEEP_METADATA <- c("healthCode",
                    "operatingSystem",
                    "medTimepoint")
 NAME <- "extract tremor features"
+PARALLEL <- TRUE
 
 ##############################
 # Outputs
@@ -126,7 +127,7 @@ main <- function(){
                                uid = UID, keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_tremor_samples(parallel = TRUE) %>% 
+        process_tremor_samples(parallel = PARALLEL) %>% 
         save_to_synapse()
 }
 
