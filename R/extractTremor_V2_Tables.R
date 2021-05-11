@@ -50,9 +50,7 @@ search_gyro_accel <- function(ts){
             stringr::str_detect(tolower(sensorType), "^rotation|^gyro"))
     
     #' parse rotation rate only
-    if((stringr::str_detect(
-        ts_list$rotation$sensorType, 
-        "^gyro|^rotationrate") %>% sum(.)) == 2){
+    if(length(ts_list$rotation$sensorType %>% unique(.)) > 1){
         ts_list$rotation <- ts_list$rotation %>% 
             dplyr::filter(!stringr::str_detect(tolower(sensorType), "^gyro"))
     }
@@ -63,6 +61,7 @@ search_gyro_accel <- function(ts){
                             dplyr::select(t,x,y,z)))
     return(ts_list)
 }
+
 
 
 #' Entry-point function to parse each filepath of each recordIds

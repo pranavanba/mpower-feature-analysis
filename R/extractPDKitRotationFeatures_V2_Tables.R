@@ -108,7 +108,7 @@ setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(
     GIT_REPO, repositoryPath = SCRIPT_PATH)
 
-shape_gait_sensor_data <- function(ts){
+search_gyro_accel <- function(ts){
     #' split to list
     ts_list <- list()
     ts_list$acceleration <- ts %>% 
@@ -119,9 +119,7 @@ shape_gait_sensor_data <- function(ts){
             stringr::str_detect(tolower(sensorType), "^rotation|^gyro"))
     
     #' parse rotation rate only
-    if((stringr::str_detect(
-        ts_list$rotation$sensorType, 
-        "^gyro|^rotationrate") %>% sum(.)) == 2){
+    if(length(ts_list$rotation$sensorType %>% unique(.)) > 1){
         ts_list$rotation <- ts_list$rotation %>% 
             dplyr::filter(!stringr::str_detect(tolower(sensorType), "^gyro"))
     }
@@ -132,6 +130,7 @@ shape_gait_sensor_data <- function(ts){
                             dplyr::select(t,x,y,z)))
     return(ts_list)
 }
+
 
 #' Entry-point function to parse each filepath of each recordIds
 #' walk data and featurize each record using featurize walk data function
@@ -148,7 +147,7 @@ process_walk_samples <- function(data, parallel=FALSE){
                 if(nrow(ts) == 0){
                     stop("ERROR: sensor timeseries is empty")
                 }else{
-                    ts_list <- ts %>% shape_gait_sensor_data()
+                    ts_list <- ts %>% search_gyro_accel()
                     gait_feature_py_obj$run_pipeline(
                         ts_list$acceleration, ts_list$rotation)
                 }
