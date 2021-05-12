@@ -64,7 +64,7 @@ parse_argument <- function(){
     parser$add_argument("-w",
                         "--window_size",
                         type = "integer",
-                        default = 512,
+                        default = 750,
                         help = "parameter of gait features")
     return(parser$parse_args())
 }
