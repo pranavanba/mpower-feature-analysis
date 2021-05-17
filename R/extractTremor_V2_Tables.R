@@ -104,8 +104,10 @@ process_tremor_samples <- function(filePath){
 parallel_process_tremor_features <- function(data){
     data %>%
         plyr::ddply(
-            .variables = c("recorId", "fileColumnName", KEEP_METADATA),
-            .fun = function(row){process_tremor_samples(row$filePath)})
+            .variables = c("recordId", "fileColumnName", KEEP_METADATA),
+            .fun = function(row){process_tremor_samples(row$filePath)},
+            .progress = progress_text(char = "-")
+        )
 }
 
 
