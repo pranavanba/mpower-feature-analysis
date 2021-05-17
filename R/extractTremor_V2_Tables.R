@@ -1,13 +1,14 @@
 library(tidyverse)
 library(jsonlite)
-library(doMC)
 library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
+library(plyr)
+library(doMC)
 source("R/utils.R")
-registerDoMC(detectCores())
 
+doMC::registerDoMC(parallel::detectCores())
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 
@@ -70,41 +71,43 @@ search_gyro_accel <- function(ts){
 #' walk data and featurize each record using featurize walk data function
 #' @params data: dataframe containing filepaths
 #' @returns featurized walk data for each participant 
-process_tremor_samples <- function(data, parallel=FALSE){
-    features <- plyr::ddply(
-        .data = data,
-        .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
-        .parallel = parallel,
-        .fun = function(row){
-            tryCatch({ # capture common errors
-                ts <- jsonlite::fromJSON(row$filePath)
-                if(nrow(ts) == 0){
-                    stop("ERROR: sensor timeseries is empty")
-                }else{
-                    ts_list <- ts %>% search_gyro_accel()
-                    features <- mhealthtools::get_tremor_features(
-                        accelerometer_data = ts_list$acceleration,
-                        gyroscope_data = ts_list$rotation,
-                        time_filter = c(5,25), 
-                        window_length = 100,
-                        window_overlap = 0.25,
-                        frequency_filter = c(3, 15),
-                        detrend = TRUE,
-                        funs = c(mhealthtools::time_domain_summary))
-                    if (is.null(features$error) && !is.null(features$extracted_features)) {
-                        return(features$extracted_features %>%
-                            dplyr::mutate(error = NA))
-                    } else {
-                        return(tibble::tibble(error = features$error))
-                    }
-                }
-            }, error = function(err){ # capture all other error
-                error_msg <- stringr::str_squish(
-                    stringr::str_replace_all(geterrmessage(), "\n", ""))
-                return(tibble::tibble(error = error_msg))})}) %>%
-        dplyr::mutate_at(all_of(KEEP_METADATA), as.character)
-    return(features)
+process_tremor_samples <- function(filePath){
+    tryCatch({ # capture common errors
+        ts <- jsonlite::fromJSON(filePath)
+        if(nrow(ts) == 0){
+            stop("ERROR: sensor timeseries is empty")
+        }else{
+            ts_list <- ts %>% search_gyro_accel()
+            features <- mhealthtools::get_tremor_features(
+                accelerometer_data = ts_list$acceleration,
+                gyroscope_data = ts_list$rotation,
+                time_filter = c(5,25), 
+                window_length = 100,
+                window_overlap = 0.25,
+                frequency_filter = c(3, 15),
+                detrend = TRUE,
+                funs = c(mhealthtools::time_domain_summary))
+            if (is.null(features$error) && !is.null(features$extracted_features)) {
+                return(features$extracted_features %>%
+                           dplyr::mutate(error = NA))
+            } else {
+                return(tibble::tibble(error = features$error))
+            }
+        }
+    }, error = function(err){ # capture all other error
+        error_msg <- stringr::str_squish(
+            stringr::str_replace_all(geterrmessage(), "\n", ""))
+        return(tibble::tibble(error = error_msg))
+    })
 }
+
+parallel_process_tremor_features <- function(data){
+    data %>%
+        plyr::ddply(
+            .variables = c("recorId", "fileColumnName", KEEP_METADATA),
+            .fun = function(row){process_tremor_samples(row$filePath)})
+}
+
 
 save_to_synapse <- function(data){
     write_file <- readr::write_tsv(data, OUTPUT_FILE)
@@ -126,7 +129,7 @@ main <- function(){
                                uid = UID, keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_tremor_samples(parallel = PARALLEL) %>% 
+        parallel_process_tremor_features() %>% 
         save_to_synapse()
 }
 
