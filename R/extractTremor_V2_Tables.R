@@ -24,7 +24,7 @@ KEEP_METADATA <- c("healthCode",
                    "phoneInfo",
                    "operatingSystem",
                    "medTimepoint")
-NAME <- "extract tremor (time-summary) features"
+NAME <- "extract tremor (time-domain summary) features"
 PARALLEL <- TRUE
 
 ##############################
