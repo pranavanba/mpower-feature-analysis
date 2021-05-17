@@ -24,7 +24,7 @@ KEEP_METADATA <- c("healthCode",
                    "phoneInfo",
                    "operatingSystem",
                    "medTimepoint")
-NAME <- "extract tremor features"
+NAME <- "extract tremor (time-summary) features"
 PARALLEL <- TRUE
 
 ##############################
@@ -90,15 +90,13 @@ process_tremor_samples <- function(data, parallel=FALSE){
                         window_overlap = 0.25,
                         frequency_filter = c(3, 15),
                         detrend = TRUE,
-                        funs = c(mhealthtools::time_domain_summary,
-                                 mhealthtools::frequency_domain_summary))
+                        funs = c(mhealthtools::time_domain_summary))
                     if (is.null(features$error) && !is.null(features$extracted_features)) {
-                        features <- features$extracted_features
-                        features$error <- NA
+                        return(features$extracted_features %>%
+                            dplyr::mutate(error = NA))
                     } else {
-                        features <- features$error
+                        return(tibble::tibble(error = features$error))
                     }
-                    return(features)
                 }
             }, error = function(err){ # capture all other error
                 error_msg <- stringr::str_squish(
