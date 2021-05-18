@@ -91,7 +91,8 @@ process_tremor_samples <- function(filePath){
                 return(features$extracted_features %>%
                            dplyr::mutate(error = NA))
             } else {
-                return(tibble::tibble(error = features$error))
+                return(tibble::tibble(
+                    error = stringr::str_c(features$error)))
             }
         }
     }, error = function(err){ # capture all other error
@@ -106,8 +107,7 @@ parallel_process_tremor_features <- function(data){
         plyr::ddply(
             .variables = c("recordId", "fileColumnName", KEEP_METADATA),
             .fun = function(row){process_tremor_samples(row$filePath)},
-            .parallel = TRUE,
-            .progress = progress_text(char = "-")
+            .parallel = TRUE
         )
 }
 
