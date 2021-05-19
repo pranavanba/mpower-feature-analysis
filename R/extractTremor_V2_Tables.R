@@ -4,11 +4,10 @@ library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
-library(plyr)
-library(doMC)
+library(furrr)
 source("R/utils.R")
 
-doMC::registerDoMC(parallel::detectCores())
+future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 
@@ -103,12 +102,16 @@ process_tremor_samples <- function(filePath){
 }
 
 parallel_process_tremor_features <- function(data){
-    data %>%
-        plyr::ddply(
-            .variables = c("recordId", "fileColumnName", KEEP_METADATA),
-            .fun = function(row){process_tremor_samples(row$filePath)},
-            .parallel = TRUE
-        )
+    features <- furrr::future_pmap_dfr(list(recordId = data$recordId, 
+                     fileColumnName = data$fileColumnName,
+                     filePath = data$filePath), function(recordId, fileColumnName, filePath){
+                         process_tremor_samples(filePath) %>% 
+                             dplyr::mutate(recordId = recordId,
+                                           fileColumnName = fileColumnName) %>%
+                             dplyr::select(recordId, fileColumnName, everything())})
+    data %>% 
+        dplyr::select(all_of(c("recordId", "fileColumnName", KEEP_METADATA))) %>%
+        dplyr::inner_join(features, by = c("recordId", "fileColumnName"))
 }
 
 

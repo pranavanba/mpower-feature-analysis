@@ -1,12 +1,13 @@
 library(tidyverse)
 library(jsonlite)
-library(doMC)
 library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
+library(furrr)
 source("R/utils.R")
 
+future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 
@@ -37,39 +38,46 @@ GIT_URL <- githubr::getPermlink(
 OUTPUT_PARENT_ID <- "syn25691532"
 OUTPUT_FILE <- "mhealthtools_tapping_features_mpowerV2.tsv"
 
-featurize_tapping <- function(data){
-    data <- data %>% 
-        tidyr::unnest(location) %>% 
-        dplyr::group_by(timestamp) %>% 
-        dplyr::mutate(col=seq_along(timestamp)) %>% #add a column indicator
-        tidyr::spread(key=col, value=location) %>% 
-        dplyr::rename(x = `1`, y = `2`) %>%
-        dplyr::mutate(
-            buttonid = case_when(
-            buttonIdentifier == "left" ~ "TappedButtonLeft",
-            buttonIdentifier == "right" ~ "TappedButtonRight",
-            TRUE ~ "TappedButtonNone")) %>%
-        dplyr::select(t = timestamp, buttonid, x, y) %>% ungroup()
-    features <- mhealthtools::get_tapping_features(data) %>% tibble(.)
-    return(features)
+process_tapping_samples <- function(filePath){
+    tryCatch({
+        data <- jsonlite::fromJSON(filePath)
+        if(nrow(data) == 0){
+            stop("error: empty files")
+        }
+        data %>% 
+            tidyr::unnest(location) %>% 
+            dplyr::group_by(timestamp) %>% 
+            dplyr::mutate(col=seq_along(timestamp)) %>% #add a column indicator
+            tidyr::spread(key=col, value=location) %>% 
+            dplyr::rename(x = `1`, y = `2`) %>%
+            dplyr::mutate(
+                buttonid = case_when(
+                    buttonIdentifier == "left" ~ "TappedButtonLeft",
+                    buttonIdentifier == "right" ~ "TappedButtonRight",
+                    TRUE ~ "TappedButtonNone")) %>%
+            dplyr::select(t = timestamp, buttonid, x, y) %>% 
+            dplyr::ungroup() %>%
+            mhealthtools::get_tapping_features(.)
+    }, error = function(err){
+        error_msg <- stringr::str_squish(
+            stringr::str_replace_all(geterrmessage(), "\n", ""))
+        return(tibble::tibble(error = error_msg))
+    })
 }
 
-process_tapping_samples <- function(data, parallel = FALSE){
-    features <- plyr::ddply(
-        .data = data,
-        .variables = all_of(c(UID, KEEP_METADATA, "fileColumnName")),
-        .parallel = parallel,
-        .fun = function(row){
-            tryCatch({
-                data <- jsonlite::fromJSON(row$filePath)
-                if(nrow(data) == 0){
-                    stop()
-                }
-                return(featurize_tapping(data))
-            }, error = function(err){
-                return(tibble(error = "empty tapping samples"))})}) %>% 
-        dplyr::mutate(across(c(UID, KEEP_METADATA), as.character))
-    return(features)
+parallel_process_tapping_samples <- function(data){
+    features <- furrr::future_pmap_dfr(list(recordId = data$recordId, 
+                                            fileColumnName = data$fileColumnName,
+                                            filePath = data$filePath), function(recordId, 
+                                                                                fileColumnName, 
+                                                                                filePath){
+                                                process_tapping_samples(filePath) %>% 
+                                                    dplyr::mutate(recordId = recordId,
+                                                                  fileColumnName = fileColumnName) %>%
+                                                    dplyr::select(recordId, fileColumnName, everything())})
+    data %>% 
+        dplyr::select(all_of(c("recordId", "fileColumnName", KEEP_METADATA))) %>%
+        dplyr::inner_join(features, by = c("recordId", "fileColumnName"))
 }
 
 save_to_synapse <- function(data){
@@ -86,12 +94,12 @@ save_to_synapse <- function(data){
 }
 
 main <-  function(){
-    features <- get_table(syn = syn, synapse_tbl = TAP_TBL,
+    get_table(syn = syn, synapse_tbl = TAP_TBL,
                           file_columns = FILE_COLUMNS,
                           uid = UID, keep_metadata = KEEP_METADATA) %>%
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
-        process_tapping_samples() %>% 
+        parallel_process_tapping_samples() %>% 
         save_to_synapse()
 }
 
