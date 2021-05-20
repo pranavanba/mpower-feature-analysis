@@ -42,7 +42,7 @@ FILE_COLUMNS <- c("accel_walking_outbound.json.items",
                 "accel_walking_rest.json.items",
                 "deviceMotion_walking_rest.json.items")
 UID <- c("recordId")
-SCRIPT_PATH <- file.path("R", "extract_pdkit_rotation_walk_features_v1.R")
+SCRIPT_PATH <- file.path("R", extract_pdkit_rotation_walk_features_v1_table.R")
 KEEP_METADATA <- c("healthCode",
                    "createdOn", 
                    "appVersion",
