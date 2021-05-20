@@ -5,6 +5,9 @@ parse_medTimepoint <- function(data){
       dplyr::rowwise() %>%
       dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
       dplyr::ungroup()
+  }else if("medTimepoint" %in% names(data)){
+    data %>% 
+      dplyr::mutate(medTimepoint = unlist(medTimepoint))
   }else{
     data %>% 
       dplyr::mutate(medTimepoint = NA)
@@ -15,12 +18,12 @@ parse_medTimepoint <- function(data){
 parse_phoneInfo <- function(data){
   data %>%
     dplyr::mutate(
-      operatingSystem = ifelse(str_detect(phoneInfo, "iOS"), "iOS", "Android"))
+      operatingSystem = ifelse(str_detect(phoneInfo, "iOS|iPhone"), "iOS", "Android"))
 }
 
 get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
   # get table entity
-  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} limit 5"))
+  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} LIMIT 100"))
   
   # shape table
   table <- entity$asDataFrame() %>%
@@ -28,7 +31,11 @@ get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
     tidyr::pivot_longer(cols = all_of(file_columns), 
                         names_to = "fileColumnName", 
                         values_to = "fileHandleId") %>%
+    dplyr::mutate(across(everything(), unlist)) %>%
     dplyr::filter(!is.na(fileHandleId)) %>%
+    dplyr::group_by(recordId, fileColumnName) %>% 
+    dplyr::summarise_all(last) %>% 
+    dplyr::ungroup() %>%
     dplyr::mutate(
       createdOn = as.POSIXct(createdOn/1000, 
                              origin="1970-01-01"),
