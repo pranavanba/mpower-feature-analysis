@@ -9,7 +9,7 @@
 WALK_TBL <- "syn12514611"
 GIT_TOKEN_PATH <- "~/git_token.txt"
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-OUTPUT_FILE <- "passive_walk_gravity_data.tsv"
+OUTPUT_FILE <- "passive_gait_adherence.tsv"
 OUTPUT_PARENT_ID <- "syn24682364"
 FILE_COLUMNS <- c("walk_motion.json")
 UID <- c("recordId")
