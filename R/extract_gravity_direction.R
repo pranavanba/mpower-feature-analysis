@@ -55,12 +55,12 @@ get_gravity_direction <- function(filePath) {
                 dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
                 dplyr::filter(sensorType == "gravity") %>%
                 dplyr::select(t = timestamp, x, y, z)
-            mse1 <- mean((dat$x - 1)^2, na.rm = TRUE)
-            mse2 <- mean((dat$x + 1)^2, na.rm = TRUE)
-            mse3 <- mean((dat$y - 1)^2, na.rm = TRUE)
-            mse4 <- mean((dat$y + 1)^2, na.rm = TRUE)
-            mse5 <- mean((dat$z - 1)^2, na.rm = TRUE)
-            mse6 <- mean((dat$z + 1)^2, na.rm = TRUE)
+            mse1 <- mean((gravity_data$x - 1)^2, na.rm = TRUE)
+            mse2 <- mean((gravity_data$x + 1)^2, na.rm = TRUE)
+            mse3 <- mean((gravity_data$y - 1)^2, na.rm = TRUE)
+            mse4 <- mean((gravity_data$y + 1)^2, na.rm = TRUE)
+            mse5 <- mean((gravity_data$z - 1)^2, na.rm = TRUE)
+            mse6 <- mean((gravity_data$z + 1)^2, na.rm = TRUE)
             aux <- which.min(c(mse1, mse2, mse3, mse4, mse5, mse6))
             if(aux == 1) {
                 vertical <- "x+"
