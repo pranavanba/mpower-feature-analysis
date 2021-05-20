@@ -110,7 +110,7 @@ parallel_process_walk_samples <- function(data){
                                                                   activityType = activityType) %>%
                                                     dplyr::select(recordId, activityType, everything())},
                                        feature_obj = gait_feature_objs) %>% 
-        mutate(across(everything(), ~replace(., is.na(.) , NA))) %>% 
+        mutate(across(everything(), ~replace(., is.nan(.) , NA))) %>% 
         tibble::as_tibble()
     
     data %>% 
@@ -134,9 +134,11 @@ save_to_synapse <- function(data){
 
 main <- function(){
     #' get raw data
-    raw_data <- get_table(syn = syn, synapse_tbl = WALK_TBL,
+    raw_data <- get_table(syn = syn, 
+                          synapse_tbl = WALK_TBL,
                           file_columns = FILE_COLUMNS,
-                          uid = UID, keep_metadata = KEEP_METADATA) %>% 
+                          uid = UID, 
+                          keep_metadata = KEEP_METADATA) %>% 
         parse_phoneInfo() %>%
         parse_medTimepoint() %>%
         dplyr::mutate(sensorType = ifelse(str_detect(fileColumnName, "^deviceMotion"), "deviceMotion", "accel"),
