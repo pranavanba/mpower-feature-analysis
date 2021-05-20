@@ -52,7 +52,7 @@ get_gravity_direction <- function(filePath) {
             stop("ERROR: gravity reading not found")
         }else{
             gravity_data <- sensor_data %>% 
-                dplyr::mutate(t = timestamp - .$timestamp[1])
+                dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
                 dplyr::filter(sensorType == "gravity") %>%
                 dplyr::select(t = timestamp, x, y, z)
             mse1 <- mean((dat$x - 1)^2, na.rm = TRUE)
