@@ -1,7 +1,21 @@
 ####################################
 # get gravity data for passive
 ####################################
+library(reticulate)
+library(tidyverse)
+library(jsonlite)
+library(githubr)
+library(jsonlite)
+library(argparse)
+library(furrr)
+source("R/utils.R")
 
+#################################
+# Python objects
+################################
+future::plan(multicore)
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$login()
 
 #################################
 # Global Variables
@@ -22,6 +36,13 @@ KEEP_METADATA <- c("healthCode",
                    "medTimepoint")
 ACTIVITY_NAME <- "extract passive gait gravity direction"
 
+####################################
+#### instantiate github #### 
+####################################
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(
+    GIT_REPO, repositoryPath = SCRIPT_PATH)
+
 get_gravity_direction <- function(filePath) {
     tryCatch({
         sensor_data <- jsonlite::fromJSON(filePath) 
@@ -31,6 +52,7 @@ get_gravity_direction <- function(filePath) {
             stop("ERROR: gravity reading not found")
         }else{
             gravity_data <- sensor_data %>% 
+                dplyr::mutate(t = timestamp - .$timestamp[1])
                 dplyr::filter(sensorType == "gravity") %>%
                 dplyr::select(t = timestamp, x, y, z)
             mse1 <- mean((dat$x - 1)^2, na.rm = TRUE)
