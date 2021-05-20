@@ -91,7 +91,8 @@ process_tremor_samples <- function(filePath){
                            dplyr::mutate(error = NA))
             } else {
                 return(tibble::tibble(
-                    error = stringr::str_c(features$error)))
+                    error = as.character(stringr::str_c(features$error)) %>%
+                        str_replace_all("[[:punct:]]", "")))
             }
         }
     }, error = function(err){ # capture all other error
