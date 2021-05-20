@@ -124,7 +124,7 @@ save_to_synapse <- function(data){
         OUTPUT_FILE, 
         parent=OUTPUT_PARENT_ID)
     activity <- synapseclient$Activity(
-        name = NAME, 
+        name = ACTIVITY_NAME, 
         executed = GIT_URL,
         used = c(WALK_TBL))
     syn$store(file, activity = activity)
