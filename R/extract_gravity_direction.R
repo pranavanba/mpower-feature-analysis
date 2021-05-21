@@ -20,7 +20,7 @@ syn <- synapseclient$login()
 #################################
 # Global Variables
 ################################
-WALK_TBL <- "syn12514611"
+WALK_TBL <- "syn17022539"
 GIT_TOKEN_PATH <- "~/git_token.txt"
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 OUTPUT_FILE <- "passive_gait_adherence.tsv"
