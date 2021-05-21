@@ -79,21 +79,17 @@ parse_rotation_data <- function(filePath){
 process_walk_samples <- function(accel, deviceMotion, feature_obj){
     #' Function to shape time series from json
     #' and make it into the valid formatting
-    #' 
     features <- tryCatch({
         accel_ts <- parse_accel_data(accel)
         rotation_ts <- parse_rotation_data(deviceMotion)
         if(nrow(accel_ts) == 0 | nrow(rotation_ts) == 0){
-            stop("error: empty files")
+            stop("error: empty time-series")
         }
         return(gait_feature_objs$run_pipeline(accel_ts, rotation_ts) %>%
-                   dplyr::mutate(error = ifelse(is.nan(error), 
-                                                NA_character_, 
-                                                error)))
+                   dplyr::mutate(error = ifelse(
+                       is.nan(error), NA_character_, error)))
     }, error = function(err){
-        error_msg <- stringr::str_squish(
-            stringr::str_replace_all(as.character(geterrmessage()), 
-                                     "[[:punct:]]", ""))
+        error_msg <- "Can't process time-series"
         return(tibble::tibble(error = as.character(error_msg)))
     })
     return(features)
