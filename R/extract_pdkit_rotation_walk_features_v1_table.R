@@ -90,9 +90,10 @@ process_walk_samples <- function(accel, deviceMotion, feature_obj){
                        is.nan(error), NA_character_, error)))
     }, error = function(err){
         error_msg <- "Can't process time-series"
-        return(tibble::tibble(error = as.character(error_msg)))
+        return(tibble::tibble(error = c(error_msg)))
     })
-    return(features)
+    return(features %>% 
+               dplyr::mutate(error = as.character(error)))
 }
 
 parallel_process_walk_samples <- function(data){
@@ -145,7 +146,8 @@ main <- function(){
                       all_of(KEEP_METADATA), 
                       activityType, 
                       sensorType, filePath) %>%
-        pivot_wider(names_from = sensorType, values_from = filePath) %>%
+        pivot_wider(names_from = sensorType, 
+                    values_from = filePath) %>%
         parallel_process_walk_samples() %>%
         save_to_synapse()
 }
