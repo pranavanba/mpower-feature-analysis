@@ -3,11 +3,24 @@ library(jsonlite)
 library(githubr)
 library(jsonlite)
 library(reticulate)
+library(MatchIt)
 source("R/utils.R")
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 
+####################################
+#### instantiate github #### 
+####################################
+GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+GIT_TOKEN_PATH <- "~/git_token.txt"
+SCRIPT_PATH <- file.path("R", "match_healthcodes.R")
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
+
+####################################
+#### instantiate global variables #### 
+####################################
 OUTPUT_REF <- list(
     walk = list(
         output_file = "age_gender_matched_healthcodes_walk.tsv",

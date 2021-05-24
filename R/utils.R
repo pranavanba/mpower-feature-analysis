@@ -51,6 +51,24 @@ get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
       fileHandleId = name, 
       filePath = value) %>%
     dplyr::mutate(filePath = unlist(filePath)) %>%
-    dplyr::inner_join(table, by = c("fileHandleId"))
+    dplyr::right_join(table, by = c("fileHandleId"))
   return(result)
+}
+
+save_to_synapse <- function(data, 
+                            output_file, 
+                            parent_id, 
+                            source_tbl = NULL,
+                            activity_name = NULL,
+                            executed = NULL){
+  write_file <- readr::write_tsv(data, output_file)
+  file <- synapseclient$File(
+    output_file, 
+    parent = parent_id)
+  activity <- synapseclient$Activity(
+    name = activity_name, 
+    executed = executed,
+    used = source_tbl)
+  syn$store(file, activity = activity)
+  unlink(output_file)
 }
