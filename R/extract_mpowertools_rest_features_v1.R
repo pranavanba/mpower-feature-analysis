@@ -32,7 +32,7 @@ syn <- synapseclient$login()
 WALK_TBL <- "syn10308918"
 GIT_TOKEN_PATH <- "~/git_token.txt"
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-OUTPUT_FILE <- "pdkit_rotation_features_mpower_v1_freeze.tsv"
+OUTPUT_FILE <- "mpowertools_rest_features_mpower_v1_freeze.tsv"
 OUTPUT_PARENT_ID <- "syn25756375"
 FILE_COLUMNS <- c("accel_walking_rest.json.items")
 UID <- c("recordId")
