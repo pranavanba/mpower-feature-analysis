@@ -24,15 +24,15 @@ REST_TBL <- "syn25781982"
 TAP_TBL <- "syn25767029"
 OUTPUT_REF <- list(
     walk = list(
-        output_file = "aggregated_walk_v1_freeze.tsv",
+        output_file = "aggregated_pdkit_rotation_walk_v1_freeze.tsv",
         id = WALK_TBL,
         parent_id = "syn25782484"),
     tap = list(
-        output_file = "aggregated_tap_v1_freeze.tsv",
+        output_file = "aggregated_mhealthtools_tap_v1_freeze.tsv",
         id = TAP_TBL,
         parent_id = "syn25782484"),
     rest = list(
-        output_file = "aggregated_rest_v1_freeze.tsv",
+        output_file = "aggregated_mpowertools_rest_v1_freeze.tsv",
         id = REST_TBL,
         parent_id = "syn25782484")
 )
