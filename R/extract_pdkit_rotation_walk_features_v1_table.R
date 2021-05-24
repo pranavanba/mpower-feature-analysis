@@ -86,8 +86,7 @@ process_walk_samples <- function(accel, deviceMotion, feature_obj){
             stop("error: empty time-series")
         }
         return(gait_feature_objs$run_pipeline(accel_ts, rotation_ts) %>%
-                   dplyr::mutate(error = ifelse(
-                       is.nan(error), NA_character_, error)))
+                   dplyr::mutate(error = as.character(error)))
     }, error = function(err){
         error_msg <- "Can't process time-series"
         return(tibble::tibble(error = c(error_msg)))
@@ -106,9 +105,7 @@ parallel_process_walk_samples <- function(data){
                                                     dplyr::mutate(recordId = recordId,
                                                                   activityType = activityType) %>%
                                                     dplyr::select(recordId, activityType, everything())},
-                                       feature_obj = gait_feature_objs) %>% 
-        mutate(across(everything(), ~replace(., is.nan(.) , NA))) %>% 
-        tibble::as_tibble()
+                                       feature_obj = gait_feature_objs)
     
     data %>% 
         dplyr::select(all_of(c("recordId", "activityType", KEEP_METADATA))) %>%
