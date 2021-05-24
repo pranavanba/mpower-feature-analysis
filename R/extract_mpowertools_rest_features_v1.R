@@ -36,7 +36,7 @@ OUTPUT_FILE <- "mpowertools_rest_features_mpower_v1_freeze.tsv"
 OUTPUT_PARENT_ID <- "syn25756375"
 FILE_COLUMNS <- c("accel_walking_rest.json.items")
 UID <- c("recordId")
-SCRIPT_PATH <- file.path("R", "extract_mpowertools_rest_features_v1_table.R")
+SCRIPT_PATH <- file.path("R", "extract_mpowertools_rest_features_v1.R")
 KEEP_METADATA <- c("healthCode",
                    "createdOn", 
                    "appVersion",
