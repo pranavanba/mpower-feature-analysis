@@ -22,6 +22,7 @@ GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 WALK_TBL <- "syn25756416"
 REST_TBL <- "syn25781982"
 TAP_TBL <- "syn25767029"
+DEMO_TBL <- "syn25782458"
 OUTPUT_REF <- list(
     walk = list(
         output_file = "aggregated_pdkit_rotation_walk_v1_freeze.tsv",
@@ -81,24 +82,8 @@ summarize_tap <- function(){
     data %>% summarize_users()
 }
 
-save_to_synapse <- function(data, 
-                            output_file, 
-                            parent_id, 
-                            source_tbl = NULL,
-                            activity_name = NULL,
-                            executed = NULL){
-    write_file <- readr::write_tsv(data, output_file)
-    file <- synapseclient$File(
-        output_file, 
-        parent = parent_id)
-    activity <- synapseclient$Activity(
-        name = activity_name, 
-        executed = executed,
-        used = source_tbl)
-    syn$store(file, activity = activity)
-    unlink(output_file)
-}
 
+demo <- syn$get(DEMO_TBL)$path %>% fread()
 purrr::walk(names(OUTPUT_REF), function(activity){
     if(activity == "tap"){
         features <- summarize_tap()
@@ -109,6 +94,7 @@ purrr::walk(names(OUTPUT_REF), function(activity){
     }
     
     features %>% 
+        dplyr::inner_join(demo, by = c("healthCode")) %>%
         save_to_synapse(
             output_file = OUTPUT_REF[[activity]]$output_file,
             parent_id = OUTPUT_REF[[activity]]$parent_id,
