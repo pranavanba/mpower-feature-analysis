@@ -94,7 +94,7 @@ save_to_synapse <- function(data){
 }
 
 main <-  function(){
-    get_table(syn = syn, synapse_tbl = TAP_TBL,
+    data <- get_table(syn = syn, synapse_tbl = TAP_TBL,
                           file_columns = FILE_COLUMNS,
                           uid = UID, keep_metadata = KEEP_METADATA) %>%
         parse_medTimepoint() %>%

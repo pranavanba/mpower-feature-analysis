@@ -54,9 +54,13 @@ summarize_walk <- function(){
     data <- syn$get(OUTPUT_REF$walk$id)$path %>% 
         fread() %>%
         dplyr::filter(activityType != "rest") %>% 
-        dplyr::select(-starts_with("window"))
+        dplyr::select(-starts_with("window"), 
+                      -all_of(c("y_speed_of_gait", "x_speed_of_gait", 
+                                "z_speed_of_gait", "AA_stride_regularity",
+                                "AA_step_regularity", "AA_symmetry")))
     walk_data <- data %>% 
         dplyr::filter(is.na(rotation_omega)) %>%
+        dplyr::select(-starts_with("rotation_omega")) %>%
         summarize_users() 
     rotation_data <- data %>% 
         dplyr::filter(!is.na(rotation_omega)) %>%
@@ -78,7 +82,9 @@ summarize_rest <- function(){
 
 
 summarize_tap <- function(){
-    data <- syn$get(OUTPUT_REF$tap$id)$path %>% fread()
+    data <- syn$get(OUTPUT_REF$tap$id)$path %>% 
+        fread() %>%
+        dplyr::select(-matches("Drift|drift"))
     data %>% summarize_users()
 }
 

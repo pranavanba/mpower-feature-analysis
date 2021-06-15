@@ -97,7 +97,8 @@ process_tremor_samples <- function(filePath){
         }
     }, error = function(err){ # capture all other error
         error_msg <- stringr::str_squish(
-            stringr::str_replace_all(geterrmessage(), "\n", ""))
+            stringr::str_replace_all(as.character(geterrmessage()), 
+                                     "[[:punct:]]", ""))
         return(tibble::tibble(error = error_msg))
     })
 }

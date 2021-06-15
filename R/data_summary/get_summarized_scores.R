@@ -36,6 +36,7 @@ summarize_features <- function(walk_data, rotation_data){
     features <- walk_data %>% 
         dplyr::select(matches("^x|^y|^z|^AA")) %>% names()
     summarize_walk <- walk_data %>% 
+        dplyr::filter(window != "window_1", window != "window_2") %>%
         dplyr::group_by(healthCode) %>%
         dplyr::mutate(nrecords = n_distinct(recordId)) %>%
         dplyr::group_by(healthCode, nrecords) %>%
