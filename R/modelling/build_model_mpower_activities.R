@@ -3,6 +3,7 @@ library(githubr)
 library(reticulate)
 library(data.table)
 library(tidymodels)
+library(randomForest)
 source("R/utils.R")
 set.seed(1000)
 
@@ -127,7 +128,7 @@ save_model <- function(features, formula, activity, model){
         model %>% 
         fit(formula, data = select(features, -healthCode))
     model_name <- glue::glue("{activity}_model_mpowerV1_freeze.rds")
-    output_loc <- file.path("model", model_name)
+    output_loc <- file.path("models", model_name)
     saveRDS(model, output_loc)
 }
 

@@ -3,7 +3,7 @@ library(githubr)
 library(reticulate)
 library(data.table)
 library(tidymodels)
-source("R/utils.R")
+source("R/utils/utils.R")
 set.seed(1000)
 
 synapseclient <- reticulate::import("synapseclient")
@@ -37,8 +37,8 @@ agg_walk_data <- walk_data %>%
     dplyr::inner_join(rot_data) %>% 
     drop_na()
 agg_tap_data <- tap_data %>% drop_na()
-walk_model <- readRDS("model/walk_model_mpowerV1_freeze.rds")
-tap_model <- readRDS("model/tap_model_mpowerV1_freeze.rds")
+walk_model <- readRDS("models/walk_model_mpowerV1_freeze.rds")
+tap_model <- readRDS("models/tap_model_mpowerV1_freeze.rds")
 
 walk_prediction <- predict(walk_model, 
         select(agg_walk_data, -healthCode), 
@@ -87,4 +87,5 @@ conf_scores %>%
          subtitle = "Trained on data from mPower V1 test on AHPD",
          y = "Mean UPDRS Scores",
          x = "Mean Model Scores") +
-    theme(plot.title = element_text(face = "bold"))
+    theme(plot.title = element_text(face = "bold")) +
+    ggsave("images/predict_ahpd.png", width = 8, height = 5)

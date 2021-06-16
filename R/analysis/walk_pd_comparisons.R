@@ -3,14 +3,22 @@ library(reticulate)
 library(data.table)
 library(ggpubr)
 library(patchwork)
+source("R/utils/analysis_utils.R")
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 
+TBL_REF <- list(
+    active_v2 = "syn25421316",
+    passive = "syn25421320",
+    demo = "syn25421202"
+)
+
+
 clean_data <- function(data){
     data %>% 
         dplyr::inner_join(demo, by = c("healthCode")) %>% 
-        dplyr::select(diagnosis, age, sex, healthCode, all_of(features)) %>%
+        dplyr::select(diagnosis, nrecords, age, sex, healthCode, all_of(features)) %>%
         tidyr::drop_na() %>%
         dplyr::filter(diagnosis == "control" | diagnosis == "parkinsons") %>%
         dplyr::mutate(diagnosis = factor(
@@ -18,43 +26,11 @@ clean_data <- function(data){
             levels = c("control", "parkinsons")))
 }
 
-get_two_sample_ttest <- function(feature_data){
-    feature_data %>%
-        dplyr::select(healthCode, diagnosis, all_of(features)) %>% 
-        tidyr::pivot_longer(cols = all_of(features),
-                            names_to = "feature") %>%
-        dplyr::group_by(feature) %>%
-        tidyr::nest() %>%
-        dplyr::mutate(test = map(data, ~ t.test(value ~ diagnosis, data = .x)),
-                      tidied = map(test, broom::tidy),
-                      n = map(data, ~ length(unique(.x$healthCode)))) %>%
-        unnest(cols = c(tidied,n)) %>% 
-        dplyr::select(n_user = n,
-                      feature, 
-                      estimate, p.value, 
-                      method, 
-                      starts_with("conf")) %>%
-        dplyr::ungroup() %>%
-        dplyr::arrange(p.value)
-}
-
-plot_boxplot <- function(data, feature, group){
-    data %>% 
-        ggplot(aes_string(y = feature, 
-                          x = group,
-                          fill = group)) +
-        geom_boxplot(alpha = 0.5) + 
-        geom_jitter(
-            alpha = 0.5,
-            position=position_jitter(width=.1, height=0)) +
-        ggpubr::stat_compare_means() + 
-        scale_fill_brewer(palette = "Dark2") +
-        theme_minimal()
-}
 
 run_sim <- function(data, top_n, output_path){
     top_feat<- data %>% 
-        get_two_sample_ttest() %>% 
+        get_two_sample_ttest(features = features,
+                             group = "diagnosis") %>% 
         dplyr::slice(1:top_n)
     
     purrr::map(top_feat$feature, function(feature){
@@ -67,22 +43,43 @@ run_sim <- function(data, top_n, output_path){
                height = 20)
 }
 
-demo <- syn$get("syn25421202")$path %>% fread
-agg_walk_data <- syn$get("syn25421316")$path %>% 
+demo <- syn$get(TBL_REF$demo)$path %>% fread
+agg_walk_data <- syn$get(TBL_REF$active_v2)$path %>% 
     fread() %>% 
     clean_data()
-agg_passive_data <- syn$get("syn25421320")$path %>% 
+matched_active_hc <- agg_walk_data %>% 
+    match_healthcodes(records_thresh = 0, 
+                      plot = TRUE) %>% 
+    .$data
+matched_walk_data <- agg_walk_data %>% 
+    dplyr::filter(healthCode %in% matched_active_hc$healthCode)
+
+agg_passive_data <- syn$get(TBL_REF$passive)$path %>% 
     fread() %>%
     clean_data()
+matched_passive_hc <- agg_passive_data %>% 
+    match_healthcodes(records_thresh = 0, 
+                      plot = TRUE) %>% 
+    .$data
+matched_passive_data <- agg_passive_data %>% 
+    dplyr::filter(healthCode %in% matched_passive_hc$healthCode)
+
+
+
 features <- agg_walk_data %>% 
     dplyr::select(matches("^x|^AA_speed|^rotation"), 
                   -any_of("x_speed_of_gait_md")) %>% 
     names(.)
 
 run_sim(agg_walk_data, 10, 
-        "images/unmatched_active_walk_pd_vs_controls.png")
+        "images/cases_vs_controls/unmatched_active_walk_pd_vs_controls.png")
+run_sim(matched_walk_data, 10, 
+        "images/cases_vs_controls/matched_active_walk_pd_vs_controls.png")
+
 run_sim(agg_passive_data, 10, 
-        "images/unmatched_passive_walk_pd_vs_controls.png")
+        "images/cases_vs_controls/unmatched_passive_walk_pd_vs_controls.png")
+run_sim(matched_passive_data, 10, 
+        "images/cases_vs_controls/matched_passive_walk_pd_vs_controls.png")
 
     
 
