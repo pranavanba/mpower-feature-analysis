@@ -23,7 +23,7 @@ parse_phoneInfo <- function(data){
 
 get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
   # get table entity
-  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} LIMIT 50"))
+  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} LIMIT 5"))
   
   # shape table
   table <- entity$asDataFrame() %>%
@@ -60,19 +60,11 @@ save_to_synapse <- function(syn,
                             data, 
                             output_filename, 
                             parent,
-                            provenance = NULL){
+                            ...){
   data %>% 
     readr::write_tsv(output_filename)
   file <- synapseclient$File(output_filename, parent = parent)
-  
-  if(!is.null(provenance)){
-    activity <- provenance %>% 
-      purrr::pmap(synapseclient$Activity) %>% 
-      purrr::reduce(c)
-    
-  }else{
-    activity <- synapseclient$Activity()
-  }
+  activity <- synapseclient$Activity(...)
   store_to_synapse <- syn$store(file, activity = activity)
   unlink(output_filename)
 }

@@ -8,7 +8,7 @@ library(githubr)
 library(jsonlite)
 library(argparse)
 library(furrr)
-source("R/reticulate_utils.R")
+source("R/utils/reticulate_utils.R")
 
 #################################
 # Python objects
@@ -31,93 +31,73 @@ GIT_URL <- githubr::getPermlink(
 # I/O reference
 ################################
 PARENT_SYN_ID <- "syn25835102"
-FILE_COLUMNS <- c("walk_motion.json")
 UID <- c("recordId")
 KEEP_METADATA <- c("healthCode",
                    "createdOn", 
                    "appVersion",
                    "phoneInfo")
+OUTPUT_FILE <- "{activity}_phone_orientation_{sensorType}.tsv"
+
 OUTPUT_REF <- list(
+    active_v1 = list(
+        tbl_id = "syn22241014",
+        cols = c("accel_walking_outbound.json.items",
+                 "accel_walking_return.json.items",
+                 "accel_walking_rest.json.items"),
+        output_file_name = OUTPUT_FILE,
+        parent = PARENT_SYN_ID,
+        name = "get phone orientation using accel - mpower v1"),
     active_v2 = list(
         tbl_id = "syn12514611",
-        output_file_name = "{activity}_phone_orientation_{sensorType}.tsv",
+        cols = c("walk_motion.json"),
+        output_file_name = OUTPUT_FILE,
         parent = PARENT_SYN_ID,
-        name = "get phone orientation using accel"),
+        name = "get phone orientation using accel - mpower v2"),
     passive = list(
         tbl_id = "syn17022539",
-        output_file_name = "{activity}_phone_orientation_{sensorType}.tsv",
+        cols = c("walk_motion.json"),
+        output_file_name = OUTPUT_FILE,
         parent = PARENT_SYN_ID,
-        name = "extract orientation using gravity")
+        name = "extract orientation using accel - passive gait")
 )
 
-
-get_gravity_direction <- function(recordId, fileColumnName, filePath) {
-    data <- tryCatch({
-        sensor_data <- jsonlite::fromJSON(filePath) 
-        if(nrow(sensor_data) == 0){
-            stop("ERROR: sensor timeseries is empty")
-        }else if(!"gravity" %in% unique(sensor_data$sensorType)){
-            stop("ERROR: gravity reading not found")
-        }else{
-            gravity_data <- sensor_data %>% 
-                dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
-                dplyr::filter(sensorType == "gravity") %>%
-                dplyr::select(t = timestamp, x, y, z)
-            mse1 <- mean((gravity_data$x - 1)^2, na.rm = TRUE)
-            mse2 <- mean((gravity_data$x + 1)^2, na.rm = TRUE)
-            mse3 <- mean((gravity_data$y - 1)^2, na.rm = TRUE)
-            mse4 <- mean((gravity_data$y + 1)^2, na.rm = TRUE)
-            mse5 <- mean((gravity_data$z - 1)^2, na.rm = TRUE)
-            mse6 <- mean((gravity_data$z + 1)^2, na.rm = TRUE)
-            aux <- which.min(c(mse1, mse2, mse3, mse4, mse5, mse6))
-            if(aux == 1) {
-                vertical <- "x+"
-            }else if(aux == 3) {
-                vertical <- "y+"
-            }else if(aux == 5) {
-                vertical <- "z+"
-            }else if(aux == 2) {
-                vertical <- "x-"
-            }else if(aux == 4) {
-                vertical <- "y-"
-            }else {
-                vertical <- "z-"
-            }
-            gravity_data %>% 
-                dplyr::summarise(
-                    median.x = median(x, na.rm = T),
-                    median.y = median(y, na.rm = T),
-                    median.z = median(z, na.rm = T)) %>%
-                dplyr::mutate(vertical = vertical,
-                              error = NA_character_) %>%
-                tibble::as_tibble()
-        }
-    }, error = function(e){
-        error_msg <- str_squish(geterrmessage()) %>%
-            str_replace_all(., "[[:punct:]]", "")
-        return(tibble::tibble(error = error_msg))
-    })
-    
-    data %>% 
-        dplyr::mutate(
-            recordId = recordId,
-            fileColumnName = fileColumnName) %>%
-        dplyr::select(
-            recordId, 
-            fileColumnName, 
-            everything())
+shape_sensor_v2 <- function(filepath){
+    sensor_data <- jsonlite::fromJSON(filepath) 
+    if(nrow(sensor_data) == 0){
+        stop("ERROR: sensor timeseries is empty")
+    }else{
+        accel_data <- sensor_data %>% 
+            dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
+            dplyr::filter(str_detect(tolower(sensorType), "^accel")) %>%
+            dplyr::select(t = timestamp, x, y, z)
+        return(accel_data)
+    }
 }
 
-get_accel_direction <- function(recordId, fileColumnName, filePath) {
-    data <- tryCatch({
-        sensor_data <- jsonlite::fromJSON(filePath) 
-        if(nrow(sensor_data) == 0){
-            stop("ERROR: sensor timeseries is empty")
+shape_sensor <- function(filePath){
+    sensor_data <- jsonlite::fromJSON(filePath) 
+    if(nrow(sensor_data) == 0){
+        stop("ERROR: sensor timeseries is empty")
+    }else{
+        if("sensorType" %in% names(sensor_data)){
+            sensor_data <- sensor_data %>%
+                dplyr::filter(str_detect(tolower(sensorType), "^accel"))
         }else{
-            accel_data <- sensor_data %>% 
-                dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
-                dplyr::filter(str_detect(tolower(sensorType), "^accel")) %>%
-                dplyr::select(t = timestamp, x, y, z) %>% 
+            
+        }
+        accel_data <- sensor_data %>% 
+            dplyr::mutate(t = timestamp - .$timestamp[1]) %>%
+            dplyr::select(t = timestamp, x, y, z)
+        return(accel_data)
+    }
+}
+
+
+
+
+get_accel_direction <- function(recordId, fileColumnName, filePath) {
+    data <- tryCatch({ 
+        shape_sensor(filePath) %>% 
                 dplyr::summarise(
                     median.x = median(x, na.rm = T),
                     median.y = median(y, na.rm = T),
@@ -139,7 +119,6 @@ get_accel_direction <- function(recordId, fileColumnName, filePath) {
                         TRUE ~ paste0("z", neg_pos.z))) %>%
                 dplyr::select(starts_with("median"), vertical) %>%
                 dplyr::mutate(error = NA_character_)
-        }
     }, error = function(e){
         error_msg <-str_squish(geterrmessage()) %>%
             str_replace_all(., "[[:punct:]]", "")
@@ -172,7 +151,7 @@ main <- function(){
         accel_direction <- get_table(
             syn = syn, 
             synapse_tbl = OUTPUT_REF[[activity]]$tbl_id,
-            file_columns = FILE_COLUMNS,
+            file_columns = OUTPUT_REF[[activity]]$cols,
             uid = UID, 
             keep_metadata = KEEP_METADATA) %>% 
             parallel_process_filepath(funs = get_accel_direction) %>%
@@ -184,30 +163,9 @@ main <- function(){
                                              activity = activity, 
                                              sensorType = "accel"),
                 parent =  OUTPUT_REF[[activity]]$parent,
-                provenance = list(
-                    name = "get orientation using accel",
-                    executed = GIT_URL,
-                    used = OUTPUT_REF[[activity]]$tbl_id)
-            )
-        gravity_direction <- get_table(
-            syn = syn, 
-            synapse_tbl = OUTPUT_REF[[activity]]$tbl_id,
-            file_columns = FILE_COLUMNS,
-            uid = UID, 
-            keep_metadata = KEEP_METADATA) %>% 
-            parallel_process_filepath(funs = get_gravity_direction) %>%
-            save_to_synapse(
-                syn = syn,
-                synapseclient = synapseclient,
-                data = .,
-                output_filename = glue::glue(OUTPUT_REF[[activity]]$output_file_name,
-                                             activity = activity, 
-                                             sensorType = "gravity"),
-                parent =  OUTPUT_REF[[activity]]$parent,
-                provenance = list(
-                    name = "get orientation using gravty",
-                    executed = GIT_URL,
-                    used = OUTPUT_REF[[activity]]$tbl_id)
+                name = "get orientation using accel",
+                executed = GIT_URL,
+                used = OUTPUT_REF[[activity]]$tbl_id
             )
     })
 }
