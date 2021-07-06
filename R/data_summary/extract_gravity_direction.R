@@ -20,7 +20,7 @@ syn <- synapseclient$login()
 #################################
 # Git reference
 ################################
-SCRIPT_PATH <- file.path("R", "extract_gravity_direction.R")
+SCRIPT_PATH <- file.path("R", "data_summary","extract_gravity_direction.R")
 GIT_TOKEN_PATH <- "~/git_token.txt"
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 setGithubToken(readLines(GIT_TOKEN_PATH))
