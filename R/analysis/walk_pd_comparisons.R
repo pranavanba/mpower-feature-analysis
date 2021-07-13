@@ -11,14 +11,17 @@ syn <- synapseclient$login()
 TBL_REF <- list(
     active_v2 = "syn25421316",
     passive = "syn25421320",
-    demo = "syn25421202"
+    demo = "syn25421202",
+    active_v2_medTimepoint = "syn25882410"
 )
 
 
-clean_data <- function(data){
+clean_data <- function(data, 
+                       metadata = c("healthCode", "diagnosis",
+                                    "nrecords", "age", "sex")){
     data %>% 
         dplyr::inner_join(demo, by = c("healthCode")) %>% 
-        dplyr::select(diagnosis, nrecords, age, sex, healthCode, all_of(features)) %>%
+        dplyr::select(all_of(metadata), all_of(features)) %>%
         tidyr::drop_na() %>%
         dplyr::filter(diagnosis == "control" | diagnosis == "parkinsons") %>%
         dplyr::mutate(diagnosis = factor(
@@ -63,22 +66,21 @@ matched_passive_hc <- agg_passive_data %>%
     .$data
 matched_passive_data <- agg_passive_data %>% 
     dplyr::filter(healthCode %in% matched_passive_hc$healthCode)
-
-
-
 features <- agg_walk_data %>% 
     dplyr::select(matches("^x|^AA_speed|^rotation"), 
-                  -any_of("x_speed_of_gait_md")) %>% 
+                  -matches("^x_speed_of_gait",
+                           "^y_speed_of_gait",
+                           "^z_speed_of_gait")) %>% 
     names(.)
 
-run_sim(agg_walk_data, 10, 
+plot_active_unmatched <- run_sim(agg_walk_data, 10, 
         "images/cases_vs_controls/unmatched_active_walk_pd_vs_controls.png")
-run_sim(matched_walk_data, 10, 
+plot_active_matched <-run_sim(matched_walk_data, 10, 
         "images/cases_vs_controls/matched_active_walk_pd_vs_controls.png")
 
-run_sim(agg_passive_data, 10, 
+plot_passive_unmatched <-run_sim(agg_passive_data, 10, 
         "images/cases_vs_controls/unmatched_passive_walk_pd_vs_controls.png")
-run_sim(matched_passive_data, 10, 
+plot_passive_matched <-run_sim(matched_passive_data, 10, 
         "images/cases_vs_controls/matched_passive_walk_pd_vs_controls.png")
 
     

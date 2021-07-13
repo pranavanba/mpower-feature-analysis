@@ -4,7 +4,7 @@ library(reticulate)
 library(data.table)
 library(tidymodels)
 library(randomForest)
-source("R/utils.R")
+source("R/utils/utils.R")
 set.seed(1000)
 
 synapseclient <- reticulate::import("synapseclient")
@@ -41,8 +41,8 @@ OUTPUT_REF <- list(
         parent_id = "syn25782930")
 )
 
-run_cv <- function(model, 
-                   training_data, 
+run_cv <- function(training_data, 
+                   model, 
                    formula,
                    kfold = 10){
     folds <- vfold_cv(training_data, v = kfold)
@@ -87,7 +87,7 @@ get_features <- function(activity){
                       diagnosis) %>%
         dplyr::filter(diagnosis != "no_answer") %>%
         dplyr::mutate(diagnosis = as.factor(diagnosis)) %>%
-        tidyr::drop_na()
+        tidyr::drop_na(diagnosis)
     matched_hc <- syn$get(OUTPUT_REF[[activity]]$hc)$path %>% fread()
     features %>% 
         dplyr::filter(healthCode %in% matched_hc$healthCode) %>% 
@@ -153,9 +153,18 @@ save_models <-  purrr::walk(names(OUTPUT_REF), function(activity){
 })
 
 
-
-
-
+test <- get_features("walk")
+features <- test %>% 
+    dplyr::select(matches("^x|^AA_speed|^rotation"), 
+                  -matches(
+                      "^x_speed_of_gait|^y_speed_of_gait|^z_speed_of_gait")) %>% 
+    names(.)
+test %>% 
+    dplyr::select(diagnosis, all_of(features)) %>% 
+    tidyr::drop_na() %>% 
+    tibble::as_tibble() %>% 
+    run_cv(model = model,
+           formula = classification_formula)
 
 
 

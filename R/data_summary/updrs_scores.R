@@ -9,6 +9,7 @@ library(reticulate)
 library(data.table)
 library(ggpubr)
 library(patchwork)
+source("R/utils/reticulate_utils.R")
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
@@ -32,5 +33,6 @@ mapping %>%
                     synapseclient = synapseclient,
                     data = ., 
                     output_filename = OUTPUT_FILE,
+                    name = "join updrs scores",
                     parent = OUTPUT_PARENT_ID,
                     used = c(MDS_UPDRS,MAPPING))

@@ -11,7 +11,8 @@ TBL_REF <- list(
     mapping = "syn17015960",
     active_v2 = "syn25421316",
     passive = "syn25421320",
-    mdsupdrs = "syn25050919"
+    mdsupdrs = "syn25050919",
+    active_v2_medTimepoint = "syn25882410"
 )
 
 
@@ -62,9 +63,6 @@ run_sim <- function(data, output_path, features, metrics, top_n = 3){
 clean_features_and_join_updrs <- function(data, metrics_data){
     data %>%
         dplyr::select(healthCode, any_of(features)) %>%
-        dplyr::group_by(healthCode) %>% 
-        dplyr::summarise_if(is.numeric, mean) %>% 
-        dplyr::ungroup() %>%
         tidyr::drop_na(any_of(features)) %>%
         dplyr::inner_join(mapping, by = "healthCode") %>%
         dplyr::inner_join(metrics_data, by = c("externalId" = "guid"))
@@ -74,7 +72,8 @@ mapping <- syn$tableQuery(glue::glue(
 "SELECT  distinct healthCode, externalId FROM {mapping} \
  where externalId is not null", mapping = TBL_REF$mapping))$asDataFrame()
 agg_passive_data <- syn$get(TBL_REF$passive)$path %>% fread()
-agg_walk_data <- syn$get(TBL_REF$active_v2)$path %>% fread() 
+agg_walk_data <- syn$get(TBL_REF$active_v2)$path %>% fread()
+agg_walk_data_med <- syn$get(TBL_REF$active_v2_medTimepoint)$path %>% fread()
 ahpd_scores <- syn$get(TBL_REF$mdsupdrs)$path %>% fread()
 baseline <- ahpd_scores %>% 
     dplyr::filter(visit == "Baseline") %>% 
@@ -101,6 +100,7 @@ baseline_passive_data <- agg_passive_data %>%
 all_passive_data <- agg_passive_data %>% 
     clean_features_and_join_updrs(metrics_data = multiple_visit)
 
+
 choice_metrics <- c("UPDRS2", 
                     "UPDRS3", 
                     "UPDRSTOT", 
@@ -117,9 +117,14 @@ run_sim(baseline_passive_data, "images/updrs_severity/baseline_passive_walk_corr
         features = features, 
         metrics = choice_metrics)
 
-run_sim(all_passive_data, "images/updrs_severity/multiple_visit_passive_walk_corr.png", 
+run_sim(all_passive_data, 
+        "images/updrs_severity/multiple_visit_passive_walk_corr.png", 
         features = features, 
         metrics = choice_metrics)
 
+
+choice_metrics <- c("C_NP2WALK", "C_NP2FREZ")
+baseline_walk_data %>% 
+    
 
 
