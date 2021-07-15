@@ -6,16 +6,6 @@ RUN apt-get update -y\
     && apt-get install -y python3-venv\
     && apt-get install -y git
 
-## R dependencies
-RUN R -e 'install.packages("synapser", repos = c("http://ran.synapse.org", "http://cran.fhcrc.org"))'\
-    && R -e 'install.packages("doMC")'\
-    && R -e 'devtools::install_github("brian-bot/githubr")'\
-    && R -e 'install.packages("reticulate")'\
-    && R -e 'devtools::install_github("Sage-Bionetworks/mhealthtools")'\
-    && R -e 'install.packages("plyr")'\
-    && R -e 'install.packages("jsonlite")'\
-    && R -e 'install.packages("argparse")'
-
 ## python dependencies
 RUN python3 -m venv ~/env\
     && . ~/env/bin/activate \
@@ -24,5 +14,15 @@ RUN python3 -m venv ~/env\
     && pip install pyyaml\
     && pip install synapseclient\
     && pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
+    
+## get packages from lockfile
+ENV RENV_VERSION 0.13.2
+RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
+RUN R -e "install.packages('synapser', repos=c('http://ran.synapse.org', 'http://cran.fhcrc.org'))"
+RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
+RUN R -e "renv::init(bare = TRUE)"
+RUN R -e "renv::restore()"
+RUN R -e "renv::use_python(name = './env', type = 'virtualenv')"
+
 
 

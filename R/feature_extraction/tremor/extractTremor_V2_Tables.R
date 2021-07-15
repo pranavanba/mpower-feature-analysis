@@ -5,7 +5,7 @@ library(jsonlite)
 library(mhealthtools)
 library(reticulate)
 library(furrr)
-source("R/utils.R")
+source("R/utils/reticulate_utils.R")
 
 future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
@@ -32,15 +32,17 @@ PARALLEL <- TRUE
 ##############################
 setGithubToken(readLines("~/git_token.txt"))
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-SCRIPT_NAME <- "extractTremor_V2_Tables.R"
+SCRIPT_PATH <- 'R/feature_extraction/tremor/extractTremor_V2_Tables.R'
 GIT_URL <- githubr::getPermlink(
     "arytontediarjo/feature_extraction_codes", 
-    repositoryPath = 'R/extractTremor_V2_Tables.R')
+    repositoryPath = SCRIPT_PATH)
 
 OUTPUT_PARENT_ID <- "syn25691532"
 OUTPUT_FILE <- "mhealthtools_tremor_features_mpowerV2.tsv"
 
 
+#' function to detect acceleration and gyroscope information
+#' from time series data 
 search_gyro_accel <- function(ts){
     #' split to list
     ts_list <- list()
@@ -103,42 +105,42 @@ process_tremor_samples <- function(filePath){
     })
 }
 
+#' function to parallel process tremor features
 parallel_process_tremor_features <- function(data){
     features <- furrr::future_pmap_dfr(list(recordId = data$recordId, 
-                     fileColumnName = data$fileColumnName,
-                     filePath = data$filePath), function(recordId, fileColumnName, filePath){
-                         process_tremor_samples(filePath) %>% 
-                             dplyr::mutate(recordId = recordId,
-                                           fileColumnName = fileColumnName) %>%
-                             dplyr::select(recordId, fileColumnName, everything())})
+                                            fileColumnName = data$fileColumnName,
+                                            filePath = data$filePath), 
+                                       function(recordId, fileColumnName, filePath){
+                                           process_tremor_samples(filePath) %>% 
+                                               dplyr::mutate(
+                                                   recordId = recordId,
+                                                   fileColumnName = fileColumnName) %>%
+                                               dplyr::select(recordId, 
+                                                             fileColumnName, 
+                                                             everything())})
     data %>% 
         dplyr::select(all_of(c("recordId", "fileColumnName", KEEP_METADATA))) %>%
         dplyr::inner_join(features, by = c("recordId", "fileColumnName"))
 }
 
 
-save_to_synapse <- function(data){
-    write_file <- readr::write_tsv(data, OUTPUT_FILE)
-    file <- synapseclient$File(
-        OUTPUT_FILE, 
-        parent=OUTPUT_PARENT_ID)
-    activity <- synapseclient$Activity(
-        name = NAME, 
-        executed = GIT_URL,
-        used = c(TREMOR_TBL))
-    syn$store(file, activity = activity)
-    unlink(OUTPUT_FILE)
-}
-
 main <- function(){
     #' get raw data
-    tremor_features <- get_table(syn = syn, synapse_tbl = TREMOR_TBL,
-                               file_columns = FILE_COLUMNS,
-                               uid = UID, keep_metadata = KEEP_METADATA) %>% 
+    tremor_features <- get_table(syn = syn, 
+                                 synapse_tbl = TREMOR_TBL,
+                                 file_columns = FILE_COLUMNS,
+                                 uid = UID, 
+                                 keep_metadata = KEEP_METADATA) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
         parallel_process_tremor_features() %>% 
-        save_to_synapse()
+        save_to_synapse(syn = syn,
+                        synapseclient = synapseclient,
+                        data = .,
+                        output_filename = OUTPUT_FILE,
+                        parent = OUTPUT_PARENT_ID,
+                        executed = GIT_URL,
+                        used = TREMOR_TBL)
 }
 
 main()
