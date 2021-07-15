@@ -23,7 +23,7 @@ parse_phoneInfo <- function(data){
 
 get_table <- function(syn, synapse_tbl, file_columns, uid, keep_metadata){
   # get table entity
-  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl}"))
+  entity <- syn$tableQuery(glue::glue("SELECT * FROM {synapse_tbl} LIMIT 50"))
   
   # shape table
   table <- entity$asDataFrame() %>%

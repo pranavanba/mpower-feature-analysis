@@ -10,18 +10,18 @@ synLogin()
 #' Git Reference
 ####################################
 GIT_TOKEN_PATH <- "~/git_token.txt"
-GIT_REPO <- "arytontediarjo/mPowerPassiveGaitAnalysis"
-SCRIPT_PATH <- "R/generate_walk_custom_tables.R"
+GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
+SCRIPT_PATH <- "R/curate_tables/generate_custom_walk_tbls.R"
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(
-    GIT_REPO, repositoryPath = SCRIPT_PATH,
+    repository = GIT_REPO, 
+    repositoryPath = SCRIPT_PATH,
     ref = "branch",
-    refName = 'main')
+    refName = 'master')
 
 ####################################
 #' Globals
 ####################################
-DEMOGRAPHICS <- "syn25421202"
 PARENT_SYN_ID <- "syn24182618"
 KEEP_COLS <- c("recordId", 
                "createdOn", 
@@ -29,31 +29,45 @@ KEEP_COLS <- c("recordId",
                "phoneInfo")
 NEW_COLS <- list(
     Column(name = "diagnosis", columnType = "STRING", maximumSize = 40),
-    Column(name = "walking_conf_score", columnType = "DOUBLE"))
+    Column(name = "walking", columnType = "DOUBLE"))
 FILE_HANDLE_COLS <- c("walk_motion.json")
 TBL_REF <- list(
-    active = list(
+    active_v2 = list(
         id = "syn12514611",
         output_tbl_name = "WalkActivity_V2-PredictionScore",
-        pred_prob = "syn25791905"
+        pred_prob = "syn25791905",
+        fh_cols = c("walk_motion.json"),
+        demo = "syn25421202"
     ),
     passive = list(
         id = "syn17022539" ,
         output_tbl_name = "PassiveWalk-PredictionScore",
-        pred_prob = "syn25791906"
+        pred_prob = "syn25791906",
+        fh_cols = c("walk_motion.json"),
+        demo = "syn25421202"
+    ),
+    active_v1 = list(
+        id = "syn10308918",
+        output_tbl_name = "WalkActivity_V1-PredictionScore",
+        pred_prob = "syn25981276",
+        fh_cols = c("accel_walking_outbound.json.items", 
+                    "deviceMotion_walking_outbound.json.items"),
+        demo = "syn25782458"
     )
 )
 
 get_pred_prob <- function(pred_prob){
-    fread(
-        synGet(pred_prob)$path) %>%
-        dplyr::select(
-            recordId = V1, 
-            walking_conf_score = walking)
+    data <- fread(
+        synGet(pred_prob)$path)
+    if("V1" %in% names(data)){
+        data <- data %>% 
+            dplyr::select(recordId = V1)
+    }
+    return(data)
 }
 
-get_merged_demo_mpower_data <- function(tbl_id){
-    demographics <- fread(synGet(DEMOGRAPHICS)$path)
+get_merged_demo_mpower_data <- function(tbl_id, demo_id){
+    demographics <- fread(synGet(demo_id)$path)
     synTableQuery(glue::glue(
         "SELECT * FROM {tbl_id}"))$asDataFrame() %>%
         dplyr::left_join(
@@ -90,7 +104,7 @@ add_additional_columns <- function(cols, new_cols = NULL){
 }
 
 copy_file_handles <- function(data, tbl_id, file_handle_cols){
-    data <- data %>%
+    all_data <- data %>%
         tidyr::pivot_longer(all_of(file_handle_cols), 
                             names_to = "file_column_name", 
                             values_to = "file_handle_id") %>%
@@ -98,25 +112,33 @@ copy_file_handles <- function(data, tbl_id, file_handle_cols){
                       associateObjectIds = tbl_id,
                       contentTypes = "json",
                       fileNames = NA)
-    
+    map_data <- all_data %>% tidyr::drop_na(file_handle_id)
     new_filehandle_map <- synapserutils::copyFileHandles(
-        fileHandles = data$file_handle_id,
-        associateObjectTypes = data$associateObjectTypes,
-        associateObjectIds = data$associateObjectIds,
-        contentTypes = data$contentTypes,
-        fileNames = data$fileNames) %>% 
+        fileHandles = map_data$file_handle_id,
+        associateObjectTypes = map_data$associateObjectTypes,
+        associateObjectIds = map_data$associateObjectIds,
+        contentTypes = map_data$contentTypes,
+        fileNames = map_data$fileNames) %>% 
         purrr::map_dfr(., function(fhandle){
             tibble::tibble(
                 new_file_handle_id = fhandle$newFileHandle$id,
                 original_file_handle_id = fhandle$originalFileHandleId)
         })
-    data <- data %>% 
-        dplyr::inner_join(
+    result <- all_data %>% 
+        dplyr::left_join(
             new_filehandle_map, 
             by = c("file_handle_id" = "original_file_handle_id")) %>%
-        tidyr::pivot_wider(names_from = "file_column_name", 
-                           values_from = "new_file_handle_id")
-    return(data)
+        tidyr::pivot_wider(
+            id_cols = c("recordId", 
+                        "diagnosis", 
+                        "healthCode",
+                        "walking",
+                        "createdOn",
+                        "appVersion", 
+                        "phoneInfo"),
+            names_from = "file_column_name", 
+            values_from = "new_file_handle_id")
+    return(result)
 }
 
 regenerate_table <- function(data, 
@@ -184,15 +206,16 @@ regenerate_table <- function(data,
 main <- function(){
     purrr::map(names(TBL_REF), function(activity){
         pred_prob <- get_pred_prob(TBL_REF[[activity]]$pred_prob)
-        activity_data <- get_merged_demo_mpower_data(tbl_id = TBL_REF[[activity]]$id) %>% 
-            dplyr::inner_join(pred_prob, by = c("recordId")) %>%
-            dplyr::arrange(walking_conf_score) 
+        activity_data <- get_merged_demo_mpower_data(
+            tbl_id = TBL_REF[[activity]]$id,
+            demo_id = TBL_REF[[activity]]$demo) %>% 
+            dplyr::inner_join(pred_prob, by = c("recordId"))
         regenerate_table(
             data = activity_data, 
             tbl_name = TBL_REF[[activity]]$output_tbl_name, 
             parent = PARENT_SYN_ID, 
             keep_cols = KEEP_COLS,
-            file_handle_cols = c(FILE_HANDLE_COLS),
+            file_handle_cols = TBL_REF[[activity]]$fh_cols,
             src_tbl_id = TBL_REF[[activity]]$id,
             new_cols = NEW_COLS,
             provenance = TRUE,

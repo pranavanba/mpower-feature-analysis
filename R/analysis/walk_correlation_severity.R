@@ -124,7 +124,6 @@ run_sim(all_passive_data,
 
 
 choice_metrics <- c("C_NP2WALK", "C_NP2FREZ")
-baseline_walk_data %>% 
     
 
 
