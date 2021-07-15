@@ -5,6 +5,12 @@ RUN apt-get update -y\
     && apt-get install -y python3-dev\
     && apt-get install -y python3-venv\
     && apt-get install -y git
+    
+## run git cloning
+RUN git clone https://github.com/arytontediarjo/mpower-feature-analysis /root/mpower-feature-analysis
+
+## change work dir
+WORKDIR /root/mpower-feature-analysis
 
 ## python dependencies
 RUN python3 -m venv ~/env\
