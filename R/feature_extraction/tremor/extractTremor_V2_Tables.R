@@ -9,12 +9,9 @@ source("R/utils/reticulate_utils.R")
 
 future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
-synapseclient <- synapseclient$Synapse()
-synapseclient$table_query_timeout <- 9999999
-syn <- synapseclient$login()
-
-
-syn <- synapseclient$login()
+syn <- synapseclient$Synapse()
+syn$login()
+syn$table_query_timeout <- 9999999
 
 ####################################
 #### Global Variables ##############
