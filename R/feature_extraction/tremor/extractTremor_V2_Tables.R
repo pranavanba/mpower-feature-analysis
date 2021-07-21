@@ -89,7 +89,8 @@ process_tremor_samples <- function(filePath){
                 window_overlap = 0.25,
                 frequency_filter = c(3, 15),
                 detrend = TRUE,
-                funs = c(mhealthtools::time_domain_summary))
+                funs = c(mhealthtools::time_domain_summary,
+                         mhealthtools::frequency_domain_summary))
             if (is.null(features$error) && !is.null(features$extracted_features)) {
                 return(features$extracted_features %>%
                            dplyr::mutate(error = NA))
