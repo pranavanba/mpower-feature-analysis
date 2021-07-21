@@ -5,7 +5,11 @@
       {
         "Name": "CRAN",
         "URL": "https://cran.rstudio.com"
-      }
+      },
+      {
+        "Name": "SAGE",
+        "URL": "http://ran.synapse.org"
+      },
     ]
   },
   "Packages": {
@@ -81,9 +85,10 @@
     },
     "PythonEmbedInR": {
       "Package": "PythonEmbedInR",
-      "Version": "0.7.84",
-      "Source": "unknown",
-      "Hash": "c19ed918dc3284c306e7436bd33b9ccc"
+      "Version": "0.8.4",
+      "Source": "Repository",
+      "Repository": "SAGE",
+      "Hash": "9a489905fb7363c0c2980453131586c6"
     },
     "R6": {
       "Package": "R6",
@@ -1300,9 +1305,10 @@
     },
     "synapser": {
       "Package": "synapser",
-      "Version": "0.10.101",
-      "Source": "unknown",
-      "Hash": "1f63ee08464c3afb15bf0f181e11642c"
+      "Version": "0.11.7",
+      "Source": "Repository",
+      "Repository": "SAGE",
+      "Hash": "799a9fb65ed0003716e629c97e9c152c"
     },
     "sys": {
       "Package": "sys",
