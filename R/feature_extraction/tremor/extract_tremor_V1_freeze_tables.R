@@ -130,8 +130,6 @@ main <- function(){
                                  synapse_tbl = TREMOR_TBL,
                                  download_file_columns = FILE_COLUMNS,
                                  nrow = 100) %>% 
-        parse_medTimepoint() %>%
-        parse_phoneInfo() %>%
         dplyr::select(recordId, fileColumnName, filePath) %>%
         dplyr::mutate(
             sensorType = ifelse(str_detect(

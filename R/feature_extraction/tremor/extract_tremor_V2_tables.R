@@ -132,12 +132,13 @@ main <- function(){
     #' get raw data
     tremor_features <- get_table(syn = syn, 
                                  synapse_tbl = TREMOR_TBL,
-                                 download_file_columns = FILE_COLUMNS) %>% 
-        parse_medTimepoint() %>%
-        parse_phoneInfo() %>%
+                                 download_file_columns = FILE_COLUMNS,
+                                 nrow = 10) %>% 
+        dplyr::select(recordId, fileColumnName, filePath) %>%
         dplyr::mutate(
-            activityType = ifelse(str_detect(fileColumnName, "left"), 
-                                  "left_hand_tremor", "right_hand_tremor")) %>%
+            activityType = ifelse(
+                str_detect(fileColumnName, "left"), 
+                "left_hand_tremor", "right_hand_tremor")) %>%
         parallel_process_tremor_features() %>% 
         save_to_synapse(syn = syn,
                         synapseclient = synapseclient,
