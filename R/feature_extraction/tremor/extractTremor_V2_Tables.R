@@ -89,6 +89,7 @@ process_tremor_samples <- function(filePath){
                 window_overlap = 0.25,
                 frequency_filter = c(3, 15),
                 detrend = TRUE,
+                derived_kinematics = TRUE,
                 funs = c(mhealthtools::time_domain_summary,
                          mhealthtools::frequency_domain_summary))
             if (is.null(features$error) && !is.null(features$extracted_features)) {
@@ -131,9 +132,7 @@ main <- function(){
     #' get raw data
     tremor_features <- get_table(syn = syn, 
                                  synapse_tbl = TREMOR_TBL,
-                                 file_columns = FILE_COLUMNS,
-                                 uid = UID, 
-                                 keep_metadata = KEEP_METADATA) %>% 
+                                 download_file_columns = FILE_COLUMNS) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
         parallel_process_tremor_features() %>% 
