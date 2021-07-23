@@ -34,7 +34,7 @@ PARALLEL <- TRUE
 ##############################
 setGithubToken(readLines("~/git_token.txt"))
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-SCRIPT_PATH <- 'R/feature_extraction/tremor/extractTremor_V2_Tables.R'
+SCRIPT_PATH <- 'R/feature_extraction/tremor/extract_tremor_V2_tables.R'
 GIT_URL <- githubr::getPermlink(
     "arytontediarjo/feature_extraction_codes", 
     repositoryPath = SCRIPT_PATH)
@@ -85,7 +85,7 @@ process_tremor_samples <- function(filePath){
                 accelerometer_data = ts_list$acceleration,
                 gyroscope_data = ts_list$rotation,
                 time_filter = c(5,25), 
-                window_length = 100,
+                window_length = 256,
                 window_overlap = 0.25,
                 frequency_filter = c(3, 15),
                 detrend = TRUE,
@@ -112,19 +112,19 @@ process_tremor_samples <- function(filePath){
 #' function to parallel process tremor features
 parallel_process_tremor_features <- function(data){
     features <- furrr::future_pmap_dfr(list(recordId = data$recordId, 
-                                            fileColumnName = data$fileColumnName,
+                                            activityType = data$activityType,
                                             filePath = data$filePath), 
-                                       function(recordId, fileColumnName, filePath){
+                                       function(recordId, activityType, filePath){
                                            process_tremor_samples(filePath) %>% 
                                                dplyr::mutate(
                                                    recordId = recordId,
-                                                   fileColumnName = fileColumnName) %>%
+                                                   activityType = activityType) %>%
                                                dplyr::select(recordId, 
-                                                             fileColumnName, 
+                                                             activityType, 
                                                              everything())})
     data %>% 
-        dplyr::select(all_of(c("recordId", "fileColumnName", KEEP_METADATA))) %>%
-        dplyr::inner_join(features, by = c("recordId", "fileColumnName"))
+        dplyr::select(all_of(c("recordId", "activityType"))) %>%
+        dplyr::inner_join(features, by = c("recordId", "activityType"))
 }
 
 
@@ -135,6 +135,9 @@ main <- function(){
                                  download_file_columns = FILE_COLUMNS) %>% 
         parse_medTimepoint() %>%
         parse_phoneInfo() %>%
+        dplyr::mutate(
+            activityType = ifelse(str_detect(fileColumnName, "left"), 
+                                  "left_hand_tremor", "right_hand_tremor")) %>%
         parallel_process_tremor_features() %>% 
         save_to_synapse(syn = syn,
                         synapseclient = synapseclient,
