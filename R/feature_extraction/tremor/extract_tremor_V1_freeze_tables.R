@@ -142,3 +142,5 @@ main <- function(){
                         executed = GIT_URL,
                         used = TREMOR_TBL)
 }
+
+main()

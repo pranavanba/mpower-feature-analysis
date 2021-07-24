@@ -132,8 +132,7 @@ main <- function(){
     #' get raw data
     tremor_features <- get_table(syn = syn, 
                                  synapse_tbl = TREMOR_TBL,
-                                 download_file_columns = FILE_COLUMNS,
-                                 nrow = 10) %>% 
+                                 download_file_columns = FILE_COLUMNS) %>% 
         dplyr::select(recordId, fileColumnName, filePath) %>%
         dplyr::mutate(
             activityType = ifelse(
