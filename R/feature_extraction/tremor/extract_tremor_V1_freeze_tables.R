@@ -45,13 +45,6 @@ GIT_URL <- githubr::getPermlink(
 OUTPUT_PARENT_ID <- "syn25756375"
 OUTPUT_FILE <- "mhealthtools_tremor_features_mpowerV1_freeze.tsv"
 
-####################################
-#### instantiate github #### 
-####################################
-setGithubToken(readLines(GIT_TOKEN_PATH))
-GIT_URL <- githubr::getPermlink(
-    GIT_REPO, repositoryPath = SCRIPT_PATH)
-
 ###########################
 #### helper functions ####
 ###########################
@@ -128,8 +121,7 @@ main <- function(){
     #' get raw data
     tremor_features <- get_table(syn = syn, 
                                  synapse_tbl = TREMOR_TBL,
-                                 download_file_columns = FILE_COLUMNS,
-                                 nrow = 100) %>% 
+                                 download_file_columns = FILE_COLUMNS) %>% 
         dplyr::select(recordId, fileColumnName, filePath) %>%
         dplyr::mutate(
             sensorType = ifelse(str_detect(
