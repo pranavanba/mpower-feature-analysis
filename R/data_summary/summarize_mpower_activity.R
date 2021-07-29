@@ -126,7 +126,6 @@ summarize_tremor <- function(feature, demo, activity){
                 str_replace("answers.medicationTiming", "medTimepoint")) %>%
         dplyr::select(recordId, healthCode, any_of("medTimepoint"))
     feature <- feature %>%
-        slice(1:10) %>%
         dplyr::filter(is.na(error)) %>%
         tidyr::pivot_wider(
             names_from = c(axis, sensor, measurementType),
@@ -134,7 +133,7 @@ summarize_tremor <- function(feature, demo, activity){
             values_from = matches("fr$|tm$")) %>%
         dplyr::select(recordId, activityType, matches("fr$|tm$"))
     agg_record <- feature %>%
-        dplyr::group_by(recordId) %>%
+        dplyr::group_by(recordId, activityType) %>%
         dplyr::summarise_if(is.numeric, 
                             list("md" = median, 
                                  "iqr" = IQR), 
@@ -143,7 +142,13 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::inner_join(identifier, by = c("recordId"))
     agg_hc <- feature %>%
         dplyr::inner_join(identifier, by = c("recordId")) %>%
-        summarize_users() %>%
+        dplyr::group_by(healthCode, activityType) %>%
+        dplyr::mutate(nrecords = n_distinct(recordId)) %>%
+        dplyr::group_by(healthCode, activityType, nrecords) %>%
+        dplyr::summarise_if(is.numeric, 
+                            list("md" = median, 
+                                 "iqr" = IQR), 
+                            na.rm = TRUE) %>%
         dplyr::ungroup()
     return(
         list(
