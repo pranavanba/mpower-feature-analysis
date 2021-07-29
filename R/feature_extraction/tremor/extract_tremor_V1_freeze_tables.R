@@ -127,8 +127,10 @@ main <- function(){
             sensorType = ifelse(str_detect(
                 fileColumnName, "^deviceMotion"), 
                 "deviceMotion", "accel"),
-            activityType = ifelse(str_detect(fileColumnName, "left"), 
-                                  "left_hand_tremor", "right_hand_tremor")) %>%
+            activityType = ifelse(
+                str_detect(fileColumnName, "left"), 
+                "left_hand_tremor", 
+                "right_hand_tremor")) %>%
         tidyr::pivot_wider(
             id_cols = c(recordId, activityType),
             names_from = "sensorType", 
