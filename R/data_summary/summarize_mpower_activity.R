@@ -147,7 +147,6 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::select(recordId, healthCode, any_of("medTimepoint"))
     feature <- feature %>%
         dplyr::filter(is.na(error)) %>%
-        dplyr::slice(1:10000) %>%
         tidyr::pivot_wider(
             names_from = c(sensor, measurementType, axis),
             names_glue = "{axis}.{sensor}.{measurementType}.{.value}",
