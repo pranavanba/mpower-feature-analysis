@@ -2,6 +2,7 @@ library(reticulate)
 library(tidyverse)
 library(githubr)
 library(data.table)
+source("R/utils/reticulate_utils.R")
 
 #' import library
 synapseclient <- reticulate::import("synapseclient")
