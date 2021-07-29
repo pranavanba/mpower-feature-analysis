@@ -2,8 +2,8 @@ library(reticulate)
 library(tidyverse)
 library(githubr)
 library(data.table)
-library(multidplyr)
-library(parallel)
+# library(multidplyr)
+# library(parallel)
 source("R/utils/reticulate_utils.R")
 
 #' import library
@@ -14,13 +14,13 @@ syn <- synapseclient$login()
 #### instantiate github #### 
 ####################################
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
-N_CLUSTER <- 8
+# N_CLUSTER <- 8
 GIT_TOKEN_PATH <- "~/git_token.txt"
 SCRIPT_PATH <- file.path("R", "data_summary","summarize_mpower_activity.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
-CLUSTER <- multidplyr::new_cluster(N_CLUSTER-2)
-cluster_library(CLUSTER, c("dplyr", "tidyr", "magrittr", "multidplyr"))
+# CLUSTER <- multidplyr::new_cluster(N_CLUSTER-2)
+# cluster_library(CLUSTER, c("dplyr", "tidyr", "magrittr", "multidplyr"))
 
 ####################################
 #### instantiate global variables #### 
@@ -62,11 +62,9 @@ parallel_groupby <- function(feature,
                              group){
     feature  %>%
         dplyr::group_by(across(all_of(group))) %>%
-        multidplyr::partition(CLUSTER) %>%
         dplyr::summarize(
             md = median(value, na.rm = T),
             iqr = IQR(value, na.rm = T)) %>%
-        collect()  %>%
         dplyr::ungroup() %>%
         tidyr::pivot_wider(
             names_from = feature,
@@ -148,7 +146,6 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::select(recordId, healthCode, any_of("medTimepoint"))
     feature <- feature %>%
         dplyr::filter(is.na(error)) %>%
-        dplyr::slice(1:1000) %>%
         tidyr::pivot_wider(
             names_from = c(sensor, measurementType, axis),
             names_glue = "{axis}.{sensor}.{measurementType}.{.value}",
