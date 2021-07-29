@@ -14,10 +14,13 @@ syn <- synapseclient$login()
 #### instantiate github #### 
 ####################################
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+N_CLUSTER <- parallel::detectCores()
 GIT_TOKEN_PATH <- "~/git_token.txt"
 SCRIPT_PATH <- file.path("R", "data_summary","summarize_mpower_activity.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
+
+CLUSTER <- multidplyr::new_cluster(N_CLUSTER)
 
 ####################################
 #### instantiate global variables #### 
@@ -56,12 +59,10 @@ OUTPUT_REF <- list(
 )
 
 parallel_groupby <- function(feature, 
-                             n_clusters = 4,
                              group){
-    cluster <- multidplyr::new_cluster(n_clusters)
     feature  %>%
         dplyr::group_by(across(all_of(group))) %>%
-        multidplyr::partition(cluster) %>%
+        multidplyr::partition(CLUSTER) %>%
         dplyr::summarize(
             md = median(value, na.rm = T),
             iqr = IQR(value, na.rm = T)) %>%
@@ -147,6 +148,7 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::select(recordId, healthCode, any_of("medTimepoint"))
     feature <- feature %>%
         dplyr::filter(is.na(error)) %>%
+        dplyr::slice(1:100000) %>%
         tidyr::pivot_wider(
             names_from = c(sensor, measurementType, axis),
             names_glue = "{axis}.{sensor}.{measurementType}.{.value}",
@@ -161,8 +163,7 @@ summarize_tremor <- function(feature, demo, activity){
     
     # aggregate based on recordId
     agg_record <- feature %>%
-        parallel_groupby(n_clusters = parallel::detectCores(),
-                         group = c("recordId", "activityType", "feature")) %>%
+        parallel_groupby(group = c("recordId", "activityType", "feature")) %>%
         dplyr::inner_join(identifier, by = c("recordId"))
     
     # aggregate based on healthCode
@@ -170,8 +171,7 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::inner_join(identifier, by = c("recordId")) %>%
         dplyr::group_by(healthCode, activityType) %>%
         dplyr::mutate(nrecords = n_distinct(recordId)) %>%
-        parallel_groupby(n_clusters = parallel::detectCores(),
-                         group = c("healthCode", "activityType", "nrecords", "feature"))
+        parallel_groupby(group = c("healthCode", "activityType", "nrecords", "feature"))
     return(
         list(
             agg_record = agg_record,
