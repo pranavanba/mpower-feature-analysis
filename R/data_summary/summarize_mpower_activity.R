@@ -71,7 +71,6 @@ parallel_groupby <- function(feature,
             names_from = feature,
             names_glue = "{feature}_{.value}",
             values_from = c(md, iqr))
-    parallel::stopCluster(cluster)
 }
 
 summarize_users <- function(data){
