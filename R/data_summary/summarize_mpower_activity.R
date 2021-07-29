@@ -2,6 +2,8 @@ library(reticulate)
 library(tidyverse)
 library(githubr)
 library(data.table)
+library(multidplyr)
+library(parallel)
 source("R/utils/reticulate_utils.R")
 
 #' import library
@@ -52,6 +54,24 @@ OUTPUT_REF <- list(
         funs = "summarize_tremor"
     )
 )
+
+parallel_groupby <- function(feature, 
+                             n_clusters = 4,
+                             group){
+    cluster <- multidplyr::new_cluster(n_clusters)
+    feature  %>%
+        dplyr::group_by(across(all_of(group))) %>%
+        multidplyr::partition(cluster) %>%
+        dplyr::summarize(
+            md = median(value, na.rm = T),
+            iqr = IQR(value, na.rm = T)) %>%
+        collect()  %>%
+        dplyr::ungroup() %>%
+        tidyr::pivot_wider(
+            names_from = feature,
+            names_glue = "{feature}_{.value}",
+            values_from = c(md, iqr))
+}
 
 summarize_users <- function(data){
     data %>%
@@ -127,29 +147,32 @@ summarize_tremor <- function(feature, demo, activity){
         dplyr::select(recordId, healthCode, any_of("medTimepoint"))
     feature <- feature %>%
         dplyr::filter(is.na(error)) %>%
+        dplyr::slice(1:10000) %>%
         tidyr::pivot_wider(
-            names_from = c(axis, sensor, measurementType),
+            names_from = c(sensor, measurementType, axis),
             names_glue = "{axis}.{sensor}.{measurementType}.{.value}",
-            values_from = matches("fr$|tm$")) %>%
-        dplyr::select(recordId, activityType, matches("fr$|tm$"))
+            values_from = matches(".fr$|.tm$")) %>%
+        dplyr::select(recordId, activityType, matches(".fr$|.tm$")) %>%
+        dplyr::mutate(
+            across(matches("fr$|tm$"), as.numeric))  %>% 
+        tidyr::pivot_longer(
+            cols = matches("fr$|tm$"), 
+            names_to = "feature",
+            values_to = "value")
+    
+    # aggregate based on recordId
     agg_record <- feature %>%
-        dplyr::group_by(recordId, activityType) %>%
-        dplyr::summarise_if(is.numeric, 
-                            list("md" = median, 
-                                 "iqr" = IQR), 
-                            na.rm = TRUE) %>%
-        dplyr::ungroup() %>%
+        parallel_groupby(n_clusters = parallel::detectCores(),
+                         group = c("recordId", "activityType", "feature")) %>%
         dplyr::inner_join(identifier, by = c("recordId"))
+    
+    # aggregate based on healthCode
     agg_hc <- feature %>%
         dplyr::inner_join(identifier, by = c("recordId")) %>%
         dplyr::group_by(healthCode, activityType) %>%
         dplyr::mutate(nrecords = n_distinct(recordId)) %>%
-        dplyr::group_by(healthCode, activityType, nrecords) %>%
-        dplyr::summarise_if(is.numeric, 
-                            list("md" = median, 
-                                 "iqr" = IQR), 
-                            na.rm = TRUE) %>%
-        dplyr::ungroup()
+        parallel_groupby(n_clusters = parallel::detectCores(),
+                         group = c("healthCode", "activityType", "nrecords", "feature"))
     return(
         list(
             agg_record = agg_record,
