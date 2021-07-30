@@ -5,6 +5,7 @@ library(furrr)
 library(future)
 source("R/utils/reticulate_utils.R")
 
+#' used synapse python client -> better parallelization
 future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$Synapse()
@@ -97,7 +98,6 @@ summarise_features <- function(feature){
 #' @param return an aggregated features of .fr, and .tm
 group_features <- function(feature, group) {
     nest_feature <- feature %>%
-        dplyr::slice(1:50000) %>%
         dplyr::mutate(
             across(matches(".fr|.tm"), as.numeric)) %>%
         dplyr::group_by(across(all_of(c(group, 
