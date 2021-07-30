@@ -1,10 +1,15 @@
-library(synapser)
 library(tidyverse)
 library(githubr)
 library(data.table)
-source("R/utils/utils.R")
+library(furrr)
+library(future)
+source("R/utils/reticulate_utils.R")
 
-synLogin()
+future::plan(multisession)
+synapseclient <- reticulate::import("synapseclient")
+syn <- synapseclient$Synapse()
+syn$login()
+syn$table_query_timeout <- 9999999
 
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 GIT_TOKEN_PATH <- "~/git_token.txt"
@@ -63,6 +68,7 @@ OUTPUT_REF <- list(
 #' 
 #' @return a mapped kinetic features
 map_kinetic_features <- function(feature){
+    print("mapping kinetic features")
     feature %>%
         dplyr::mutate(
             measurementType = case_when(
@@ -71,6 +77,15 @@ map_kinetic_features <- function(feature){
                 str_detect(sensor, "gyroscope") ~ str_replace_all(
                     measurementType, KINETIC_MAPPING$gyroscope), 
                 TRUE ~ measurementType))
+}
+
+summarise_features <- function(feature){
+    feature %>%
+        dplyr::summarise(across(
+            .cols = everything(),
+            .fns = list(md = ~median(.x, na.rm = TRUE), 
+                        iqr = ~IQR(.x, na.rm = TRUE)),
+            .names = "{.col}.{.fn}"))
 }
 
 #' function to aggregate features
@@ -90,11 +105,9 @@ group_features <- function(feature, group) {
                                         "measurementType", 
                                         "axis")))) %>%
         dplyr::select(matches(".fr|.tm")) %>%
-        dplyr::summarise(across(
-            .cols = everything(),
-            .fns = list(md = ~median(.x, na.rm = TRUE), 
-                        iqr = ~IQR(.x, na.rm = TRUE)),
-            .names = "{.col}.{.fn}")) %>% 
+        tidyr::nest() %>% 
+        dplyr::mutate(data = furrr::future_map(data, summarise_features)) %>%
+        tidyr::unnest(data) %>%
         dplyr::ungroup()
 }
 
@@ -118,30 +131,34 @@ main <- function(){
         
         # get features
         feature <- OUTPUT_REF[[activity]]$feat_id %>% 
-            synGet() %>% 
+            syn$get() %>% 
             .$path %>% 
             fread() %>%
             dplyr::filter(is.na(error))
         
         # get demographics
         demo <- OUTPUT_REF[[activity]]$demo_id %>% 
-            synGet() %>% 
+            syn$get() %>% 
             .$path %>% 
             fread()
         
         # get identifiers
-        identifier <- synTableQuery(
+        identifier <- syn$tableQuery(
             glue::glue(
                 "select recordId, healthCode from {tbl_id}", 
                 tbl_id = OUTPUT_REF[[activity]]$tbl_id))$asDataFrame()
         
         agg_record <- feature %>%
+            dplyr::slice(1:50000) %>%
             map_kinetic_features()  %>%
             group_features(group = c("recordId")) %>%
             widen_features() %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
             dplyr::inner_join(demo, by = c("healthCode")) %>%
             save_to_synapse(
+                syn = syn,
+                synapseclient = synapseclient,
+                data = .,
                 output_filename = OUTPUT_REF[[activity]]$agg_record,
                 parent= OUTPUT_REF[[activity]]$parent_id,
                 used = OUTPUT_REF[[activity]]$feat_id,
@@ -156,6 +173,9 @@ main <- function(){
             widen_features() %>%
             dplyr::inner_join(demo, by = c("healthCode")) %>%
             save_to_synapse(
+                syn = syn,
+                synapseclient = synapseclient,
+                data = .,
                 output_filename = OUTPUT_REF[[activity]]$agg_hc,
                 parent= OUTPUT_REF[[activity]]$parent_id,
                 used = OUTPUT_REF[[activity]]$feat_id,
