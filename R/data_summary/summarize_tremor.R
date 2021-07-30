@@ -150,7 +150,6 @@ main <- function(){
                 tbl_id = OUTPUT_REF[[activity]]$tbl_id))$asDataFrame()
         
         agg_record <- feature %>%
-            dplyr::slice(1:10000) %>%
             map_kinetic_features()  %>%
             group_features(group = c("recordId")) %>%
             widen_features() %>%
@@ -166,7 +165,6 @@ main <- function(){
                 executed = GIT_URL, 
                 name = "aggregate tremor by records")
         agg_hc <- feature %>%
-            dplyr::slice(1:1000) %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
             dplyr::group_by(healthCode, activityType) %>%
             dplyr::mutate(nrecords = n_distinct(recordId)) %>%
