@@ -122,7 +122,7 @@ main <- function(){
             .$path %>% 
             fread() %>%
             dplyr::filter(is.na(error)) %>%
-            dplyr::slice(1:1000)
+            dplyr::slice(1:50000)
         
         # get demographics
         demo <- OUTPUT_REF[[activity]]$demo_id %>% 
@@ -147,7 +147,7 @@ main <- function(){
                 parent= OUTPUT_REF[[activity]]$parent_id,
                 used = OUTPUT_REF[[activity]]$feat_id,
                 executed = GIT_URL, 
-                name = "aggregate tremor mpower-freeze features")
+                name = "aggregate tremor by records")
         agg_hc <- feature %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
             dplyr::group_by(healthCode, activityType) %>%
@@ -157,11 +157,11 @@ main <- function(){
             widen_features() %>%
             dplyr::inner_join(demo, by = c("healthCode")) %>%
             save_to_synapse(
-                output_filename = OUTPUT_REF[[activity]]$agg_record,
+                output_filename = OUTPUT_REF[[activity]]$agg_hc,
                 parent= OUTPUT_REF[[activity]]$parent_id,
                 used = OUTPUT_REF[[activity]]$feat_id,
                 executed = GIT_URL,
-                name = "aggregate tremor-v2 features")
+                name = "aggregate tremor by healthcodes")
     })
 }
 
