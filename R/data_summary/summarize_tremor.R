@@ -97,7 +97,7 @@ summarise_features <- function(feature){
 #' 
 #' @param return an aggregated features of .fr, and .tm
 group_features <- function(feature, group) {
-    nest_feature <- feature %>%
+    feature %>%
         dplyr::mutate(
             across(matches(".fr|.tm"), as.numeric)) %>%
         dplyr::group_by(across(all_of(c(group, 
@@ -149,7 +149,8 @@ main <- function(){
                 "select recordId, healthCode from {tbl_id}", 
                 tbl_id = OUTPUT_REF[[activity]]$tbl_id))$asDataFrame()
         
-        agg_record <- feature %>%
+        # get features aggregated with recordId
+       feature %>%
             map_kinetic_features()  %>%
             group_features(group = c("recordId")) %>%
             widen_features() %>%
@@ -164,7 +165,9 @@ main <- function(){
                 used = OUTPUT_REF[[activity]]$feat_id,
                 executed = GIT_URL, 
                 name = "aggregate tremor by records")
-        agg_hc <- feature %>%
+       
+       # get features aggregated with healthcode
+       feature %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
             dplyr::group_by(healthCode, activityType) %>%
             dplyr::mutate(nrecords = n_distinct(recordId)) %>%
