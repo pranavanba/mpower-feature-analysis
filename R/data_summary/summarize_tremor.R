@@ -1,0 +1,149 @@
+library(synapser)
+library(tidyverse)
+library(githubr)
+library(data.table)
+
+synLogin()
+
+GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+GIT_TOKEN_PATH <- "~/git_token.txt"
+SCRIPT_PATH <- file.path("R", "data_summary","summarize_tremor.R")
+setGithubToken(readLines(GIT_TOKEN_PATH))
+GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
+
+####################################
+#### instantiate global variables #### 
+####################################
+KINETIC_MAPPING <- list(
+    acceleration = c(
+        "acceleration" = "ua",
+        "jerk" = "uj",
+        "displacement" = "ud",
+        "velocity" = "uv",
+        "acf" = "uaacf"),
+    gyroscope = c(
+        "acceleration" = "uaa",
+        "jerk" = "uaj",
+        "displacement" = "uad",
+        "velocity" = "uav",
+        "acf" = "uavcf"
+    ))
+
+OUTPUT_REF <- list(
+    tremor_v1 = list(
+        agg_hc = "mhealthtools_tremor_freeze_agg_healthcodes.tsv",
+        agg_record = "mhealthtools_tremor_freeze_agg_recordId.tsv",
+        feat_id = "syn26001251",
+        tbl_id = "syn10676309",
+        demo_id = "syn25782458",
+        parent_id = "syn25782484",
+        funs = "summarize_tremor"
+    ),
+    tremor_v2 = list(
+        agg_hc = "mhealthtools_tremor_v2_agg_healthcodes.tsv",
+        agg_record = "mhealthtools_tremor_v2_agg_recordId.tsv",
+        feat_id = "syn25701650",
+        tbl_id = "syn12977322",
+        demo_id = "syn25693310",
+        parent_id = "syn25999253",
+        funs = "summarize_tremor"
+    )
+)
+
+
+
+map_kinetic_features <- function(feature){
+    feature %>%
+        dplyr::mutate(
+            measurementType = case_when(
+                str_detect(sensor, "accelerometer") ~ str_replace_all(
+                    measurementType, KINETIC_MAPPING$acceleration), 
+                str_detect(sensor, "gyroscope") ~ str_replace_all(
+                    measurementType, KINETIC_MAPPING$gyroscope), 
+                TRUE ~ measurementType))
+}
+
+group_features <- function(feature, group) {
+    feature %>%
+        dplyr::mutate(
+            across(matches(".fr|.tm"), as.numeric)) %>%
+        dplyr::group_by(across(all_of(c(group, 
+                                        "activityType", 
+                                        "sensor", 
+                                        "measurementType", 
+                                        "axis")))) %>%
+        dplyr::select(matches(".fr|.tm")) %>%
+        dplyr::summarise(across(
+            .cols = everything(),
+            .fns = list(md = ~median(.x, na.rm = TRUE), 
+                        iqr = ~IQR(.x, na.rm = TRUE)),
+            .names = "{.col}.{.fn}")) %>% 
+        dplyr::ungroup()
+}
+
+widen_features <- function(feature){
+    feature %>%
+        tidyr::pivot_wider(
+            names_from = c(sensor, measurementType, axis),
+            names_glue = "{.value}_{measurementType}_{sensor}_{axis}",
+            values_from = matches(".md$|.iqr$"))
+}
+
+purrr::walk(names(OUTPUT_REF), function(activity){
+    feature <- OUTPUT_REF[[activity]]$feat_id %>% 
+        synGet() %>% 
+        .$path %>% 
+        fread() %>%
+        dplyr::filter(is.na(error)) %>%
+        dplyr::slice(1:1000)
+    
+    demo <- OUTPUT_REF[[activity]]$demo_id %>% 
+        synGet() %>% 
+        .$path %>% 
+        fread()
+    
+    identifier <- synTableQuery(
+        glue::glue(
+            "select recordId, healthCode from {tbl_id}", 
+            tbl_id = OUTPUT_REF[[activity]]$tbl_id))$asDataFrame()
+    
+    agg_feat_list <- list(
+        agg_record = feature %>%
+            map_kinetic_features()  %>%
+            group_features(group = c("recordId")) %>%
+            widen_features() %>%
+            dplyr::inner_join(identifier, by = c("recordId")),
+        agg_hc = feature %>%
+            dplyr::inner_join(identifier, by = c("recordId")) %>%
+            dplyr::group_by(healthCode, activityType) %>%
+            dplyr::mutate(nrecords = n_distinct(recordId)) %>%
+            map_kinetic_features() %>%
+            group_features(group = c("healthCode", "nrecords")) %>%
+            widen_features()
+    )
+    
+    agg_feat_list$agg_record %>%
+        dplyr::inner_join(demo, by = c("healthCode")) %>%
+        save_to_synapse(
+            syn = syn,
+            data = .,
+            synapseclient = synapseclient,
+            output_filename = OUTPUT_REF[[activity]]$agg_record,
+            parent= OUTPUT_REF[[activity]]$parent_id,
+            used = OUTPUT_REF[[activity]]$feat_id,
+            executed = GIT_URL, 
+            name = "aggregate features")
+    
+    agg_feat_list$agg_hc %>%
+        dplyr::inner_join(demo, by = c("healthCode")) %>%
+        save_to_synapse(
+            syn = syn,
+            data = .,
+            synapseclient = synapseclient,
+            output_filename = OUTPUT_REF[[activity]]$agg_hc,
+            parent = OUTPUT_REF[[activity]]$parent_id,
+            used = OUTPUT_REF[[activity]]$feat_id,
+            executed = GIT_URL, 
+            name = "aggregate features")
+})
+    
