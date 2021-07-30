@@ -121,8 +121,7 @@ main <- function(){
             synGet() %>% 
             .$path %>% 
             fread() %>%
-            dplyr::filter(is.na(error)) %>%
-            dplyr::slice(1:50000)
+            dplyr::filter(is.na(error))
         
         # get demographics
         demo <- OUTPUT_REF[[activity]]$demo_id %>% 
