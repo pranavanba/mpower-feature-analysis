@@ -12,7 +12,7 @@ syn <- synapseclient$Synapse()
 syn$login()
 syn$table_query_timeout <- 9999999
 
-GIT_REPO <- "arytontediarjo/feature_extraction_codes"
+GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 GIT_TOKEN_PATH <- "~/git_token.txt"
 SCRIPT_PATH <- file.path("R", "data_summary","summarize_tremor.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))

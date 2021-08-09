@@ -61,7 +61,8 @@ purrr::map(c("v1", "v2"), function(activity){
         save_to_synapse(output_filename = glue::glue("reduced_features_{filename}",
                                                      filename = agg_record_entity$properties$name),
                         parent = SYN_ID_REF[[activity]]$parent,
-                        used = c(agg_record_entity$properties$id, BEST_FEATURES))
+                        used = c(agg_record_entity$properties$id, BEST_FEATURES),
+                        executed = GIT_URL)
     agg_hc <- synapser::synGet(agg_hc_entity$properties$id)$path %>% 
         fread() %>%
         dplyr::select(healthCode, 
@@ -74,6 +75,7 @@ purrr::map(c("v1", "v2"), function(activity){
         save_to_synapse(output_filename = glue::glue("reduced_features_{filename}",
                                                      filename = agg_hc_entity$properties$name),
                         parent = SYN_ID_REF[[activity]]$parent,
-                        used = c(agg_hc_entity$properties$id, BEST_FEATURES))
+                        used = c(agg_hc_entity$properties$id, BEST_FEATURES),
+                        executed = GIT_URL)
     
 })
