@@ -1,0 +1,148 @@
+# PCA analysis for Walking features
+
+```{r, warning = FALSE, message = FALSE}
+# PCA analysis
+library(tidyverse)
+library(data.table)
+library(synapser)
+```
+
+## Login to Synapse
+```{r, warning = FALSE, message = FALSE}
+synapser::synLogin()
+```
+
+## Global Vars
+```{r}
+# retrieve tapping features
+DEMO_V1 <- "syn25782458"
+DEMO_V2 <- "syn25693310"
+MATCHED_WALK_DATA <- "syn25782946"
+
+# retrieve walking features
+WALKING_FEATURES_V1 <- "syn25782772"
+WALKING_FEATURES_V2 <- "syn25421316"
+```
+
+## Helper function
+```{r}
+get_walk_features_v1 <- function(){
+    synGet(WALKING_FEATURES_V1)$path %>% 
+    fread() %>%
+    dplyr::mutate(version = 1) %>% 
+    dplyr::group_by(healthCode, sex, age, phoneInfo, version) %>%
+    dplyr::select(
+        matches("^x|^z|^AA_speed|^rotation"), 
+        -matches("^x_speed_of_gait|^y_speed_of_gait|^z_speed_of_gait|_var$")) %>%
+    dplyr::ungroup()
+}
+
+get_walk_features_v2 <- function(){
+    synGet(WALKING_FEATURES_V2)$path %>% 
+    fread() %>%
+    dplyr::inner_join(demo_v2, by = c("healthCode")) %>%
+    dplyr::mutate(version = 2) %>%
+    dplyr::group_by(healthCode, sex, age, phoneInfo, version) %>%
+    dplyr::select(
+        matches("^x|^z|^AA_speed|^rotation"), 
+        -matches("^x_speed_of_gait|^y_speed_of_gait|^z_speed_of_gait|_var$")) %>%
+    dplyr::ungroup()
+}
+
+plot_pca <- function(data, hue_col, title, subtitle){
+    data %>%
+    dplyr::mutate(!!sym(hue_col) := as.factor(!!sym(hue_col))) %>%
+    ggplot(aes_string(".fittedPC1", ".fittedPC2", color = hue_col)) + 
+    labs(x = "PC1", y = "PC2") +
+    geom_point(alpha = 0.5) +
+    theme_minimal() + 
+    labs(title = title,
+         subtitle = subtitle)
+}
+
+```
+
+
+## Get Demographics
+```{r}
+demo_v1 <- synGet(DEMO_V1)$path %>% fread()
+demo_v1_matched <- synGet(MATCHED_WALK_DATA)$path %>% fread()
+demo_v2 <- synGet(DEMO_V2)$path %>% fread()
+walk_v1 <- get_walk_features_v1()
+matched_walk_v1 <- walk_v1 %>%
+    dplyr::filter(healthCode %in% demo_v1_matched$healthCode)
+walk_v2 <- get_walk_features_v2()
+```
+
+## Bind Dataset
+```{r}
+all_v1_v2 <- dplyr::bind_rows(
+    walk_v1, 
+    walk_v2) %>% 
+    tidyr::drop_na() %>% 
+    dplyr::ungroup()
+
+matched_v1_bind_v2 <- dplyr::bind_rows(
+    matched_walk_v1, 
+    walk_v2) %>% 
+    tidyr::drop_na() %>% 
+    dplyr::ungroup()
+```
+
+
+## PCA - Without Scaling
+```{r, fig.width = 15, fig.height = 6, warning = FALSE, message = FALSE}
+DO_SCALING <- FALSE
+pca_fit <- all_v1_v2 %>% 
+    dplyr::select(
+        matches("_iqr$|_md$")) %>%
+    prcomp(scale. = DO_SCALING) %>%
+    broom::augment(all_v1_v2)
+plot_all <- pca_fit %>%
+    plot_pca(hue_col = "version",
+             title = "PCA Plot Walking Features",
+             subtitle = "All V1 compared to All V2")
+
+pca_fit <- matched_v1_bind_v2 %>% 
+    dplyr::select(
+        matches("_iqr$|_md$")) %>%
+    prcomp(scale. = DO_SCALING) %>%
+    broom::augment(matched_v1_bind_v2)
+plot_matched <- pca_fit %>%
+    plot_pca(hue_col = "version",
+             title = "PCA Plot Walking Features",
+             subtitle = "Matched V1 compared to All V2")
+no_scaling <- patchwork::wrap_plots(plot_all, plot_matched) + 
+    patchwork::plot_layout(guides = "collect")
+no_scaling
+```
+
+
+## PCA - With Scaling
+```{r, fig.width = 15, fig.height = 6, warning = FALSE, message = FALSE}
+DO_SCALING <- TRUE
+pca_fit <- all_v1_v2 %>% 
+    dplyr::select(
+        matches("_iqr$|_md$")) %>%
+    prcomp(scale. = DO_SCALING) %>%
+    broom::augment(all_v1_v2)
+plot_all <- pca_fit %>%
+    plot_pca(hue_col = "version",
+             title = "PCA Plot (Scaled) Walking Features",
+             subtitle = "All V1 compared to All V2")
+
+pca_fit <- matched_v1_bind_v2 %>% 
+    dplyr::select(
+        matches("_iqr$|_md$")) %>%
+    prcomp(scale. = DO_SCALING) %>%
+    broom::augment(matched_v1_bind_v2)
+plot_matched <- pca_fit %>%
+    plot_pca(hue_col = "version",
+             title = "PCA Plot (Scaled) Walking Features",
+             subtitle = "Matched V1 compared to All V2")
+scaling <- patchwork::wrap_plots(plot_all, plot_matched) + 
+    patchwork::plot_layout(guides = "collect")
+scaling
+```
+
+
