@@ -10,8 +10,8 @@ TAPPING_FEATURES <- "syn25692238"
 #### instantiate github #### 
 ####################################
 GIT_TOKEN_PATH <- "~/git_token.txt"
-GIT_REPO <- "aryontediarjo/summarize_mpower_activity.R"
-SCRIPT_PATH <- file.path("R", "notebook", "summarize_mpower_activity.R")
+GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
+SCRIPT_PATH <- file.path("R", "data_summary", "summarize_mpower_activity.R")
 
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
