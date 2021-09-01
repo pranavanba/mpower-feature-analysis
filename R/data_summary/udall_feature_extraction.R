@@ -1,6 +1,7 @@
 library(synapser)
 library(tidyverse)
 library(data.table)
+library(githubr)
 
 synapser::synLogin()
 
@@ -53,6 +54,7 @@ externalIds_mapping <- tibble::tibble(
     age = c(71, 72, 58, 63))
 
 
+GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 GIT_TOKEN_PATH <- "~/git_token.txt"
 SCRIPT_PATH <- file.path("R", "data_summary","udall_feature_extraction.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
@@ -161,8 +163,9 @@ walk_data <- get_walk_features(
 file <- synapser::File(OUTPUT_FILENAME$walking, 
                        parent = PARENT_ID)
 synapser::synStore(file, activity = Activity(
+    name = "get data for udall center - walk30s",
     used = c(FEATURE_SYN_ID_LIST$walking, FEATURE_SYN_ID_LIST$rotation),
-    executed = NULL))
+    executed = GIT_URL))
 
 ## extract tap feature sets
 tap_data <- get_tap_features(
@@ -174,8 +177,9 @@ tap_data <- get_tap_features(
 file <- synapser::File(OUTPUT_FILENAME$tapping, 
                        parent = PARENT_ID)
 synapser::synStore(file, activity = Activity(
+    name = "get data for udall center - tapping",
     used = c(FEATURE_SYN_ID_LIST$tapping),
-    executed = NULL))
+    executed = GIT_URL))
 
 
 ## extract tremor feature sets
@@ -189,8 +193,9 @@ file <- synapser::File(
     OUTPUT_FILENAME$tremor, 
     parent = PARENT_ID)
 synapser::synStore(file, activity = Activity(
+    name = "get data for udall center - tremor",
     used = c(FEATURE_SYN_ID_LIST$tremor),
-    executed = NULL))
+    executed = GIT_URL))
 
 ## clean data
 purrr::walk(OUTPUT_FILENAME, ~unlink(.x))
