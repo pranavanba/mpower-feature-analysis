@@ -5,7 +5,7 @@ library(githubr)
 
 synapser::synLogin()
 
-PARENT_ID <- "syn26142249"
+PARENT_ID <- "syn26156827"
 FEATURE_SYN_ID_LIST <- list(
     tapping = "syn25692238",
     walking = "syn25692284",
@@ -41,17 +41,20 @@ externalIds_mapping <- tibble::tibble(
     healthCode = c('e069767a-81bf-44da-9fa4-3b22c2c54776',
                    'eabfe044-9456-47c5-9cc9-eca61c54fd29',
                    '96ba9749-d925-4470-8bff-42ab2abafa25',
-                   '53f012ae-c4ac-4090-ab12-1f0baa021ac6'),
+                   '53f012ae-c4ac-4090-ab12-1f0baa021ac6',
+                   '4b736fed-a43a-458e-8edf-9dad77d49aab'),
     externalId = c('NIHKH638RXUVN',
                    'NIHXN551LBFMK',
                    'NIHHG558EJJMM',
-                   'NIHAV871KZCVE'),
+                   'NIHAV871KZCVE',
+                   'NIHEX043WFAEF'),
     diagnosis = c(
         "control",
         "PD",
         "control",
+        "PD",
         "PD"),
-    age = c(71, 72, 58, 63))
+    age = c(71, 72, 58, 63, 69))
 
 
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
@@ -60,6 +63,8 @@ SCRIPT_PATH <- file.path("R", "data_summary","udall_feature_extraction.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 
+FILTER_STUDY_BURST <- FALSE
+
 #' filter data by 20 days from initial createdOn
 filter_by_first_study_burst <- function(data){
     data %>%
@@ -67,12 +72,16 @@ filter_by_first_study_burst <- function(data){
 }
 
 #' helper function to filter study burst per user
-filter_data <- function(data){
-    data %>%
+filter_data <- function(data, filter_study_burst = FALSE){
+   data <- data %>%
         dplyr::inner_join(externalIds_mapping, by = "healthCode") %>%
         dplyr::group_by(healthCode) %>%
-        tidyr::nest() %>%
-        dplyr::mutate(data = purrr::map(data, filter_by_first_study_burst)) %>%
+        tidyr::nest()
+    if(filter_study_burst){
+        data <- data %>%
+            dplyr::mutate(data = purrr::map(data, filter_by_first_study_burst))    
+    }
+    data %>%
         tidyr::unnest(data) %>%
         dplyr::ungroup()
 }
@@ -156,7 +165,7 @@ get_tremor_features <- function(tremor_id){
 walk_data <- get_walk_features(
     walk_segment_id = FEATURE_SYN_ID_LIST$walking, 
     rotation_segment_id = FEATURE_SYN_ID_LIST$rotation) %>%
-    filter_data() %>%
+    filter_data(filter_study_burst = FALSE) %>%
     dplyr::select(externalId, diagnosis, age, 
                   everything(), -healthCode) %>%
     readr::write_tsv(OUTPUT_FILENAME$walking)
@@ -170,7 +179,7 @@ synapser::synStore(file, activity = Activity(
 ## extract tap feature sets
 tap_data <- get_tap_features(
     FEATURE_SYN_ID_LIST$tapping) %>%
-    filter_data() %>%
+    filter_data(filter_study_burst = FALSE) %>%
     dplyr::select(externalId, diagnosis, age, 
                   everything(), -healthCode) %>%
     readr::write_tsv(OUTPUT_FILENAME$tapping)
@@ -185,7 +194,7 @@ synapser::synStore(file, activity = Activity(
 ## extract tremor feature sets
 tremor_data <-  get_tremor_features(
     FEATURE_SYN_ID_LIST$tremor)%>%
-    filter_data() %>%
+    filter_data(filter_study_burst = FALSE) %>%
     dplyr::select(externalId, diagnosis, age, 
                   everything(), -healthCode) %>%
     readr::write_tsv(OUTPUT_FILENAME$tremor)
