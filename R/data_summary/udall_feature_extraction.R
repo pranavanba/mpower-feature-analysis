@@ -13,10 +13,13 @@ FEATURE_SYN_ID_LIST <- list(
     tremor = "syn26042630"
 )
 
+PRED_SCORE <- "syn26156663"
+
 OUTPUT_FILENAME <- list(
     tapping = "udall_tapping_features.tsv",
     walking = "udall_walk30s_features.tsv",
-    tremor = "udall_tremor_features.tsv"
+    tremor = "udall_tremor_features.tsv",
+    pred = "udall_pd_severity_scores.tsv"
 )
 
 
@@ -130,6 +133,7 @@ get_tap_features <- function(tap_id){
                       createdOn, 
                       medTimepoint,
                       activityType,
+                      error,
                       all_of(FEATURE_SELECTION$tapping))
 }
 
@@ -205,6 +209,23 @@ synapser::synStore(file, activity = Activity(
     name = "get data for udall center - tremor",
     used = c(FEATURE_SYN_ID_LIST$tremor),
     executed = GIT_URL))
+
+pred_score <- synGet(PRED_SCORE)$path %>% 
+    fread() %>%
+    dplyr::inner_join(externalIds_mapping, by = c("healthCode")) %>%
+    dplyr::select(externalId, PD_severity_score = PD.severity) %>%
+    tibble::as_tibble() %>%
+    readr::write_tsv(OUTPUT_FILENAME$pred)
+file <- synapser::File(
+    OUTPUT_FILENAME$pred, 
+    parent = PARENT_ID)
+synapser::synStore(file, activity = Activity(
+    name = "get data for udall center - severity",
+    used = c(FEATURE_SYN_ID_LIST$pred),
+    executed = GIT_URL))
+    
+
+
 
 ## clean data
 purrr::walk(OUTPUT_FILENAME, ~unlink(.x))
