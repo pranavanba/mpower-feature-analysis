@@ -1,62 +1,24 @@
-#' function to check whether medication timepoint exist
-parse_medTimepoint <- function(data){
-  if("answers.medicationTiming" %in% names(data)){
-    data %>% 
-      dplyr::rowwise() %>%
-      dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
-      dplyr::ungroup()
-  }else if("medTimepoint" %in% names(data)){
-    data %>% 
-      dplyr::mutate(medTimepoint = unlist(medTimepoint))
-  }else{
-    data %>% 
-      dplyr::mutate(medTimepoint = NA)
-  }
-}
-
-#' function to parse phone information
-parse_phoneInfo <- function(data){
-  data %>%
-    dplyr::mutate(
-      operatingSystem = ifelse(str_detect(phoneInfo, "iOS|iPhone"), "iOS", "Android"))
-}
-
-generate_query_clause <- function(id, 
-                                  cols = NULL, 
-                                  nrow = NULL, 
-                                  cond = NULL){
-  if(!is.null(cols)){
-    cols <-  stringr::str_c(cols, collapse = ",")
-  }else{
-    cols <- "*"
-  }
-  query_string <- glue::glue("select {cols} from {id}")
-  if(!is.null(cond)){
-    query_string <- glue::glue(query_string, " where ", cond)
-  }
-  if(!is.null(nrow)){
-    query_string <- glue::glue(query_string, " limit ", nrow)
-  }
-  return(query_string)
-}
-
-get_table <- function(syn, synapse_tbl, 
-                      download_file_columns = NULL, ...){
+reticulated_get_table <- function(syn, 
+                                  tbl_id, 
+                                  file_columns = NULL,
+                                  query_params = NULL){
   
   # get table entity
-  entity <- generate_query_clause(id = synapse_tbl, ...) %>% 
-    syn$tableQuery(.)
-  
-  print( generate_query_clause(id = synapse_tbl))
+  if(is.null(query_params)){
+    entity <- glue::glue("select * from {tbl_id}")
+  }else{
+    entity <- glue::glue("select * from {tbl_id} {query_params}") 
+  }
+  entity <- entity %>% syn$tableQuery(.)
   
   # check if download file columns
-  if(is.null(download_file_columns)){
+  if(is.null(file_columns)){
     result <- entity$asDataFrame()
   }else{
     # shape table
     table <- entity$asDataFrame() %>%
       tibble::as_tibble(.) %>%
-      tidyr::pivot_longer(cols = all_of(download_file_columns), 
+      tidyr::pivot_longer(cols = all_of(file_columns), 
                           names_to = "fileColumnName", 
                           values_to = "fileHandleId") %>%
       dplyr::mutate(across(everything(), unlist)) %>%
@@ -71,7 +33,7 @@ get_table <- function(syn, synapse_tbl,
     # download all table columns
     result <- syn$downloadTableColumns(
       table = entity, 
-      columns = download_file_columns) %>%
+      columns = file_columns) %>%
       tibble::enframe(.) %>%
       tidyr::unnest(value) %>%
       dplyr::select(
@@ -83,15 +45,15 @@ get_table <- function(syn, synapse_tbl,
   return(result)
 }
 
-save_to_synapse <- function(syn,
+reticulated_save_to_synapse <- function(syn,
                             synapseclient,
                             data, 
                             output_filename, 
-                            parent,
+                            parent_id,
                             ...){
   data %>% 
     readr::write_tsv(output_filename)
-  file <- synapseclient$File(output_filename, parent = parent)
+  file <- synapseclient$File(output_filename, parent = parent_id)
   activity <- synapseclient$Activity(...)
   store_to_synapse <- syn$store(file, activity = activity)
   unlink(output_filename)
