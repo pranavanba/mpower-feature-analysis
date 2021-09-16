@@ -171,10 +171,11 @@ main <-  function(){
     
     #' check core usage parameter
     if(is.null(opt$n_cores)){
-       future::plan(strategy = sequential) 
+       future::plan(multisession) 
+    }else if(opt$n_cores > 1){
+        future::plan(strategy = multisession, workers = opt$n_cores) 
     }else{
-        future::plan(strategy = multisession, 
-                     workers = opt$n_cores) 
+        future::plan(sequential)
     }
     
     #' - get table from synapse
