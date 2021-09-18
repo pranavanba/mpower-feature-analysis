@@ -193,7 +193,7 @@ main <- function(){
     data <- reticulated_get_table(
         syn, tbl_id = opt$table_id,
         file_columns = opt$file_column_name,
-        query_params = "WHERE phoneInfo NOT LIKE '%iOS%' LIMIT 10") %>%
+        query_params = opt$query_params) %>%
         map_feature_extraction(
             file_parser = parse_sensor_gyro_accel_v2,
             feature_funs = featurize_tremor,
