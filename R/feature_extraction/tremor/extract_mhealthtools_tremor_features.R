@@ -88,7 +88,8 @@ parse_sensor_gyro_accel_v2 <- function(file_path){
         ts_list <- list()
         ts_list$acceleration <- ts %>% 
             dplyr::filter(
-                stringr::str_detect(tolower(sensorType), "^accel"))
+                stringr::str_detect(tolower(sensorType), "^accel")) %>%
+            dplyr::mutate(sensorType = "accelerometer")
         ts_list$rotation <- ts %>% 
             dplyr::filter(
                 stringr::str_detect(tolower(sensorType), "^rotation|^gyro")) %>%
@@ -121,11 +122,15 @@ featurize_tremor <- function(data, ...){
         accel <- data %>%
             dplyr::filter(sensorType == "accelerometer") %>%
             dplyr::select(t,x,y,z) %>%
-            normalize_time()
+            normalize_timestamp() %>%
+            tidyr::drop_na() %>%
+            as.data.frame()
         gyro <- data %>%
             dplyr::filter(sensorType == "gyro")  %>%
             dplyr::select(t,x,y,z) %>%
-            normalize_time()
+            normalize_timestamp() %>%
+            tidyr::drop_na() %>%
+            as.data.frame()
         features <- mhealthtools::get_tremor_features(
             accelerometer_data = accel,
             gyroscope_data = gyro,
@@ -188,9 +193,9 @@ main <- function(){
     data <- reticulated_get_table(
         syn, tbl_id = opt$table_id,
         file_columns = opt$file_column_name,
-        query_params = opt$query_params) %>%
+        query_params = "WHERE phoneInfo NOT LIKE '%iOS%' LIMIT 10") %>%
         map_feature_extraction(
-            file_parser = parse_sensor_gyro_accel,
+            file_parser = parse_sensor_gyro_accel_v2,
             feature_funs = featurize_tremor,
             time_filter = c(5,25), 
             window_length = 256,
