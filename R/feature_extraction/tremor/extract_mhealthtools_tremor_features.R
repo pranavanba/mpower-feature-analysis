@@ -120,10 +120,12 @@ featurize_tremor <- function(data, ...){
     tryCatch({
         accel <- data %>%
             dplyr::filter(sensorType == "accelerometer") %>%
-            dplyr::select(t,x,y,z)
+            dplyr::select(t,x,y,z) %>%
+            normalize_time()
         gyro <- data %>%
             dplyr::filter(sensorType == "gyro")  %>%
-            dplyr::select(t,x,y,z)
+            dplyr::select(t,x,y,z) %>%
+            normalize_time()
         features <- mhealthtools::get_tremor_features(
             accelerometer_data = accel,
             gyroscope_data = gyro,
