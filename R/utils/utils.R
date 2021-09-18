@@ -6,7 +6,8 @@
 #' @return dataframe/tibble tapping features
 map_feature_extraction <- function(data, 
                                    file_parser, 
-                                   feature_funs){
+                                   feature_funs,
+                                   ...){
     features <- furrr::future_pmap_dfr(
         list(recordId = data$recordId,
              fileColumnName = data$fileColumnName,
@@ -19,7 +20,7 @@ map_feature_extraction <- function(data,
                  file_parser, 
                  feature_funs){
             file_parser <- partial(file_parser)
-            feature_funs <- partial(feature_funs)
+            feature_funs <- partial(feature_funs, ...)
             filePath %>%
                 file_parser() %>%
                 feature_funs() %>%
@@ -129,3 +130,14 @@ parse_phoneInfo <- function(data){
         dplyr::mutate(
             operatingSystem = ifelse(str_detect(phoneInfo, "iOS|iPhone"), "iOS", "Android"))
 }
+
+normalize_timestamp <- function(data){
+    if(median(data$t) > 1000){
+        data <- data %>% 
+            dplyr::mutate(t = t/1000)
+    }
+    return(data %>%
+               dplyr::arrange(t))
+}
+
+
