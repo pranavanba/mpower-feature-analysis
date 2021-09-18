@@ -49,7 +49,7 @@ option_list <- list(
                 help = "N of cores to use for data processing"),
     make_option(c("-q", "--query_params"), 
                 type = "character", 
-                default = "LIMIT 5",
+                default = NULL,
                 help = "Additional table query params"),
     make_option(c("-g", "--git_token"), 
                 type = "character", 
