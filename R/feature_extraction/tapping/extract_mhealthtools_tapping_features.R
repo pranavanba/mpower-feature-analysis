@@ -116,17 +116,11 @@ parse_tapping_v2_samples <- function(file_path){
                 buttonIdentifier == "right" ~ "TappedButtonRight",
                 TRUE ~ "TappedButtonNone")) %>%
         dplyr::select(t = timestamp, buttonid, x, y) %>%
-        dplyr::ungroup()
-    
-    #' Android is recording in miliseconds, 
-    #' thus if median timestamp is found to be more than 1000 seconds
-    #' highly likely that user is using Android
-    if(median(data$t) > 1000){
-        data <- data %>% 
-            dplyr::mutate(t = t/1000)
-    }
-    return(data %>%
-               dplyr::arrange(t))
+        dplyr::ungroup() %>%
+        normalize_timestamp() %>%
+        tidyr::drop_na() %>%
+        dplyr::arrange(t) %>%
+    return(data)
 }
 
 #' Featurize tapping samples by mapping
