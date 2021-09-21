@@ -65,13 +65,47 @@ option_list <- list(
                 help = "Which mPower Version")
 )
 
-#' get parameter from optparse
-opt_parser = OptionParser(option_list=option_list)
-opt = parse_args(opt_parser)
-opt$file_column_name <- stringr::str_replace_all(
-    opt$file_column_name, " ", "") %>%
-    stringr::str_split(",") %>%
-    purrr::reduce(c)
+
+#' Function to detect acceleration and 
+#' gyroscope information from file path
+#' 
+#' @param file_path .json motion file from Synapse table
+#' @return a tibble/dataframe of sensor 
+parse_sensor_gyro_accel_v1 <- function(file_path){
+    ts <- jsonlite::fromJSON(file_path)
+    if(nrow(ts) == 0){
+        stop("ERROR: sensor timeseries is empty")
+    }else{
+        #' split to list
+        ts_list <- list()
+        ts_list$acceleration <- ts %>%
+            dplyr::mutate(t = timestamp - .$timestamp[1],
+                          x = .$userAcceleration$x,
+                          y = .$userAcceleration$y,
+                          z = .$userAcceleration$z) %>%
+            dplyr::select(t, x, y, z) %>%
+            dplyr::mutate(sensorType = "accelerometer")
+        ts_list$rotation <- ts %>%
+            dplyr::mutate(t = timestamp - .$timestamp[1],
+                          x = .$rotationRate$x,
+                          y = .$rotationRate$y,
+                          z = .$rotationRate$z) %>% 
+            dplyr::select(t, x, y, z) %>%
+            dplyr::mutate(sensorType = "gyro")
+        
+        #' parse rotation rate only
+        if(length(ts_list$rotation$sensorType %>% unique(.)) > 1){
+            ts_list$rotation <- ts_list$rotation %>% 
+                dplyr::filter(!stringr::str_detect(tolower(sensorType), "^gyro"))
+        }
+        
+        ts <- ts_list %>%
+            purrr::map(., ~(.x %>%
+                                dplyr::select(sensorType, t,x,y,z))) %>%
+            purrr::reduce(dplyr::bind_rows)
+    }
+    return(ts)
+}
 
 
 #' Function to detect acceleration and 
