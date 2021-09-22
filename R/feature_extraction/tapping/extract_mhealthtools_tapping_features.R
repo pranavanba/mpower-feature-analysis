@@ -25,7 +25,7 @@ GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 SCRIPT_PATH <- "R/feature_extraction/tapping/extract_mhealthtools_tapping_features.R"
 
 #' set global variables for timestamp cutoff
-TIME_CUTOFF <- 20.5
+END_TIMESTAMP <- 20.5
 
 #' Option parser 
 option_list <- list(
@@ -123,7 +123,7 @@ parse_tapping_v2_samples <- function(file_path){
         dplyr::ungroup() %>%
         normalize_timestamp() %>%
         tidyr::drop_na() %>%
-        dplyr::arrange(t) %>%
+        dplyr::arrange(t)
     return(data)
 }
 
@@ -132,10 +132,10 @@ parse_tapping_v2_samples <- function(file_path){
 #' 
 #' @param data
 #' @return dataframe/tibble tapping features
-featurize_tapping <- function(data, time_cutoff, ...){
+featurize_tapping <- function(data, ...){
     tryCatch({
         data %>%
-            dplyr::filter(t < time_cutoff) %>%
+            dplyr::filter(t < 20.05) %>%
             as.data.frame() %>%
             mhealthtools::get_tapping_features(...)
     }, error = function(err){
@@ -188,8 +188,7 @@ main <-  function(){
         query_params = opt$query_params) %>%
         map_feature_extraction(
             file_parser = file_parser,
-            feature_funs = featurize_tapping,
-            time_cutoff = TIME_CUTOFF) %>%
+            feature_funs = featurize_tapping) %>%
         reticulated_save_to_synapse(
             syn, synapseclient, 
             data = ., 
