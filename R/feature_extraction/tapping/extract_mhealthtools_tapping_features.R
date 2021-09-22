@@ -24,6 +24,9 @@ syn$table_query_timeout <- 9999999
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 SCRIPT_PATH <- "R/feature_extraction/tapping/extract_mhealthtools_tapping_features.R"
 
+#' set global variables for timestamp cutoff
+TIME_CUTOFF <- 20.5
+
 #' Option parser 
 option_list <- list(
     make_option(c("-i", "--table_id"), 
@@ -89,7 +92,8 @@ parse_tapping_v1_samples <- function(file_path){
         select(x = V1, y = V2) %>% 
         mutate_at(vars(x,y), as.double)
     data <- cbind(data, tap_coord) %>% 
-        select(t = TapTimeStamp, x, y, buttonid= "TappedButtonId")
+        select(t = TapTimeStamp, x, 
+               y, buttonid= "TappedButtonId")
     return(data %>%
                dplyr::arrange(t))
 }
@@ -128,9 +132,10 @@ parse_tapping_v2_samples <- function(file_path){
 #' 
 #' @param data
 #' @return dataframe/tibble tapping features
-featurize_tapping <- function(data, ...){
+featurize_tapping <- function(data, time_cutoff, ...){
     tryCatch({
         data %>%
+            dplyr::filter(t < time_cutoff) %>%
             as.data.frame() %>%
             mhealthtools::get_tapping_features(...)
     }, error = function(err){
@@ -183,7 +188,8 @@ main <-  function(){
         query_params = opt$query_params) %>%
         map_feature_extraction(
             file_parser = file_parser,
-            feature_funs = featurize_tapping) %>%
+            feature_funs = featurize_tapping,
+            time_cutoff = TIME_CUTOFF) %>%
         reticulated_save_to_synapse(
             syn, synapseclient, 
             data = ., 
