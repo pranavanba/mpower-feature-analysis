@@ -12,8 +12,8 @@ library(mhealthtools)
 library(reticulate)
 library(furrr)
 library(optparse)
-source("R/utils/reticulate_utils.R")
-source("R/utils/utils.R")
+source("utils/reticulate_utils.R")
+source("utils/curation_utils.R")
 
 #' Get Synapse Creds
 synapseclient <- reticulate::import("synapseclient")
@@ -22,7 +22,7 @@ syn$table_query_timeout <- 9999999
 
 #' Global Variables of Github Repository and where it is located
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
-SCRIPT_PATH <- "R/feature_extraction/tapping/extract_mhealthtools_tapping_features.R"
+SCRIPT_PATH <- "feature_extraction/tapping/extract_mhealthtools_tapping_features.R"
 
 #' set global variables for timestamp cutoff
 END_TIMESTAMP <- 20.5

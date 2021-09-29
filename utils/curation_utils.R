@@ -108,29 +108,6 @@ get_table <- function(synapse_tbl,
     return(result)
 }
 
-#' function to check whether medication timepoint exist
-parse_medTimepoint <- function(data){
-    if("answers.medicationTiming" %in% names(data)){
-        data %>% 
-            dplyr::rowwise() %>%
-            dplyr::mutate(medTimepoint = glue::glue_collapse(answers.medicationTiming, ", ")) %>%
-            dplyr::ungroup()
-    }else if("medTimepoint" %in% names(data)){
-        data %>% 
-            dplyr::mutate(medTimepoint = unlist(medTimepoint))
-    }else{
-        data %>% 
-            dplyr::mutate(medTimepoint = NA)
-    }
-}
-
-#' function to parse phone information
-parse_phoneInfo <- function(data){
-    data %>%
-        dplyr::mutate(
-            operatingSystem = ifelse(str_detect(phoneInfo, "iOS|iPhone"), "iOS", "Android"))
-}
-
 normalize_timestamp <- function(data){
     if(median(data$t) > 1000){
         data <- data %>% 
@@ -140,4 +117,41 @@ normalize_timestamp <- function(data){
                dplyr::arrange(t))
 }
 
+
+curate_app_version <- function(data){
+    data %>% 
+        tidyr::separate(appVersion, 
+                        ",", 
+                        into = c("version", "build"), 
+                        remove = FALSE) %>%
+        dplyr::select(-build)
+}
+
+
+curate_med_timepoint <- function(data){
+    if("answers.medicationTiming" %in% names(data)){
+        data %>% 
+            dplyr::select(everything(), 
+                          medTimepoint := answers.medicationTiming)
+    }else{
+        data
+    }
+}
+
+curate_phone_info <- function(data){
+    data %>%
+        dplyr::mutate(using_ios_phone = 
+                          ifelse(str_detect(phoneInfo, 
+                                            "iOS|iPhone"), 
+                                 TRUE, FALSE)) %>%
+        dplyr::select(-phoneInfo)
+    
+}
+
+remove_test_user <- function(data){
+    test_user <- data %>%
+        dplyr::filter(str_detect(dataGroups, "test_user")) 
+    data %>% 
+        dplyr::anti_join(test_user, by = c("recordId"))
+}
 
