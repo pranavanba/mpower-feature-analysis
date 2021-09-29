@@ -51,7 +51,7 @@ parsed_var <- parse_argument()
 FEATURES <- parsed_var$features
 GIT_TOKEN_PATH <- parsed_var$git_token
 GIT_REPO <- parsed_var$git_repo
-SCRIPT_PATH <- file.path("R", "aggregate_features.R")
+SCRIPT_PATH <- file.path("R", "notebook","aggregate_features.R")
 OUTPUT_FILE <- parsed_var$output
 OUTPUT_PARENT_ID <- parsed_var$parent_id
 DO_AGGREGATE <- parsed_var$run_aggregate
@@ -64,8 +64,8 @@ synapser::synLogin()
 ##############################
 # Global Variables
 #############################
-DEMO_TBL_V1 <- "syn10371840"
-DEMO_TBL_V2 <- "syn15673379"
+DEMO_TBL_V1 <- "syn25782458"
+DEMO_TBL_V2 <- "syn25693310"
 CURRENT_YEAR  <- lubridate::year(lubridate::now())
 
 ####################################
@@ -87,8 +87,10 @@ get_user_categorization <- function(){
 }
 
 #' utility function for aggregating features
-aggregate_sensor_features <- function(data, col = c("healthCode"), 
-                                      agg_func = list("med" = median, "iqr" = IQR,"var" = var)){
+aggregate_sensor_features <- function(data, 
+                                      col = c("healthCode"), 
+                                      agg_func = list("med" = median, 
+                                                      "iqr" = IQR)){
     num_records <- data %>%
         dplyr::group_by(healthCode) %>%
         dplyr::summarise(nrecords = n()) %>%

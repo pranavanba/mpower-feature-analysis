@@ -30,38 +30,47 @@ KEEP_COLS <- c("recordId",
 NEW_COLS <- list(
     Column(name = "diagnosis", columnType = "STRING", maximumSize = 40),
     Column(name = "walking", columnType = "DOUBLE"))
-FILE_HANDLE_COLS <- c("walk_motion.json")
 TBL_REF <- list(
-    active_v2 = list(
-        id = "syn12514611",
-        output_tbl_name = "WalkActivity_V2-PredictionScore",
-        pred_prob = "syn25791905",
-        fh_cols = c("walk_motion.json"),
-        demo = "syn25421202"
-    ),
-    passive = list(
-        id = "syn17022539" ,
-        output_tbl_name = "PassiveWalk-PredictionScore",
-        pred_prob = "syn25791906",
-        fh_cols = c("walk_motion.json"),
-        demo = "syn25421202"
-    ),
-    active_v1 = list(
+    # active_v2 = list(
+    #     id = "syn12514611",
+    #     output_tbl_name = "WalkActivity_V2-PredictionScore",
+    #     pred_prob = "syn25791905",
+    #     fh_cols = c("walk_motion.json"),
+    #     demo = "syn25421202"
+    # ),
+    # passive = list(
+    #     id = "syn17022539" ,
+    #     output_tbl_name = "PassiveWalk-PredictionScore",
+    #     pred_prob = "syn25791906",
+    #     fh_cols = c("walk_motion.json"),
+    #     demo = "syn25421202"
+    # ),
+    # active_v1 = list(
+    #     id = "syn10308918",
+    #     output_tbl_name = "WalkActivity_V1-PredictionScore",
+    #     pred_prob = "syn25981276",
+    #     fh_cols = c("accel_walking_outbound.json.items", 
+    #                 "deviceMotion_walking_outbound.json.items"),
+    #     demo = "syn25782458"
+    # ),
+    v1_checks = list(
         id = "syn10308918",
         output_tbl_name = "WalkActivity_V1-PredictionScore",
-        pred_prob = "syn25981276",
+        pred_prob = "syn26050373",
         fh_cols = c("accel_walking_outbound.json.items", 
                     "deviceMotion_walking_outbound.json.items"),
         demo = "syn25782458"
-    )
-)
+))
 
 get_pred_prob <- function(pred_prob){
     data <- fread(
         synGet(pred_prob)$path)
     if("V1" %in% names(data)){
         data <- data %>% 
-            dplyr::select(recordId = V1)
+            dplyr::select(recordId = V1, everything())
+    }else if("walk.prob" %in% names(data)){
+        data <- data %>%
+            dplyr::select(recordId, walking = walk.prob)
     }
     return(data)
 }
@@ -112,7 +121,9 @@ copy_file_handles <- function(data, tbl_id, file_handle_cols){
                       associateObjectIds = tbl_id,
                       contentTypes = "json",
                       fileNames = NA)
-    map_data <- all_data %>% tidyr::drop_na(file_handle_id)
+    map_data <- all_data %>% 
+        tidyr::drop_na(file_handle_id) %>%
+        distinct(file_handle_id, .keep_all = T)
     new_filehandle_map <- synapserutils::copyFileHandles(
         fileHandles = map_data$file_handle_id,
         associateObjectTypes = map_data$associateObjectTypes,
@@ -128,6 +139,7 @@ copy_file_handles <- function(data, tbl_id, file_handle_cols){
         dplyr::left_join(
             new_filehandle_map, 
             by = c("file_handle_id" = "original_file_handle_id")) %>%
+        dplyr::distinct() %>%
         tidyr::pivot_wider(
             id_cols = c("recordId", 
                         "diagnosis", 
@@ -162,6 +174,7 @@ regenerate_table <- function(data,
                     schema$removeColumn(col)
                 })
             synStore(schema)
+            Sys.sleep(time = 5)
         }
     }
     

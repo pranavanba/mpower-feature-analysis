@@ -173,7 +173,8 @@ main <-  function(){
     if(is.null(opt$n_cores)){
        future::plan(multisession) 
     }else if(opt$n_cores > 1){
-        future::plan(strategy = multisession, workers = opt$n_cores) 
+        future::plan(strategy = multisession, 
+                     workers = opt$n_cores) 
     }else{
         future::plan(sequential)
     }
