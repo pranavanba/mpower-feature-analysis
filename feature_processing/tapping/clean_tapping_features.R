@@ -16,7 +16,7 @@ synapser::synLogin()
 GIT_URL <- get_github_url(
     git_token_path = "~/git_token.txt",
     git_repo = "arytontediarjo/mpower-feature-analysis",
-    script_path = "feature_processing/tapping/clean_tap_features.R")
+    script_path = "feature_processing/tapping/clean_tapping_features.R")
 FEATURE_REF <- list(
     v1 = list(
         feature_id = "syn26250287",
