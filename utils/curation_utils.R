@@ -124,7 +124,7 @@ curate_app_version <- function(data){
                         ",", 
                         into = c("version", "build"), 
                         remove = FALSE) %>%
-        dplyr::select(-build)
+        dplyr::select(-build, -appVersion)
 }
 
 
@@ -140,18 +140,31 @@ curate_med_timepoint <- function(data){
 
 curate_phone_info <- function(data){
     data %>%
-        dplyr::mutate(using_ios_phone = 
-                          ifelse(str_detect(phoneInfo, 
-                                            "iOS|iPhone"), 
-                                 TRUE, FALSE)) %>%
-        dplyr::select(-phoneInfo)
-    
+        dplyr::mutate(phoneInfo = case_when(
+            str_detect(tolower(phoneInfo), "iphone.4|iphone4") ~ "iPhone 4",
+            str_detect(tolower(phoneInfo), "iphone.5|iphone5") ~ "iPhone 5",
+            str_detect(tolower(phoneInfo), "iphone.6|iphone6") ~ "iPhone 6",
+            str_detect(tolower(phoneInfo), "iphone.7|iphone7") ~ "iPhone 7",
+            str_detect(tolower(phoneInfo), "iphone.8|iphone8") ~ "iPhone 8",
+            str_detect(tolower(phoneInfo), "iphone.9|iphone9") ~ "iPhone 9",
+            str_detect(tolower(phoneInfo), "iphone.10|iphone10|iphonex|iphone.x") ~ "iPhone 10",
+            str_detect(tolower(phoneInfo), "iphone.11|iphone11") ~ "iPhone 11",
+            str_detect(tolower(phoneInfo), "iphone.12|iphone12") ~ "iPhone 12",
+            str_detect(tolower(phoneInfo), "iphone.13|iphone13") ~ "iPhone 13",
+            str_detect(tolower(phoneInfo), "iphone.se|iphonese") ~ "iPhone SE",
+            str_detect(tolower(phoneInfo), "samsung|google|motorola|android|lge|htc|huawei|android|oneplus|nokia") ~ "iPhone SE",
+            str_detect(tolower(phoneInfo), "ipod") ~ "iPod",
+            str_detect(tolower(phoneInfo), "ipad") ~ "iPad",
+            str_detect(tolower(phoneInfo), "simulator") ~ "Simulator",
+            TRUE ~ phoneInfo
+        ))
 }
 
 remove_test_user <- function(data){
     test_user <- data %>%
         dplyr::filter(str_detect(dataGroups, "test_user")) 
     data %>% 
-        dplyr::anti_join(test_user, by = c("recordId"))
+        dplyr::anti_join(test_user, by = c("recordId")) %>%
+        dplyr::select(-dataGroups)
 }
 
