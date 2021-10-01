@@ -27,6 +27,7 @@ FEATURE_REF <- list(
         name = "clean tapping v1 data",
         description = "remove test group, curate app version, phoneInfo, and medication timepoint",
         metadata = c("recordId", 
+                     "createdOn",
                      "healthCode",
                      "appVersion",
                      "dataGroups",
@@ -42,6 +43,7 @@ FEATURE_REF <- list(
         name = "clean tapping v2 data",
         description = "remove test group, curate app version, phoneInfo, and medication timepoint",
         metadata = c("recordId", 
+                     "createdOn",
                      "healthCode",
                      "appVersion",
                      "dataGroups",
@@ -73,7 +75,14 @@ main <- function(){
             fread() %>%
             dplyr::inner_join(
                 metadata, by = c("recordId", 
-                                 "healthCode"))
+                                 "healthCode")) %>%
+            dplyr::select(recordId, 
+                          createdOn,
+                          healthCode, 
+                          version, 
+                          medTimepoint,
+                          phoneInfo,
+                          everything())
         
         # save to synapse
         save_to_synapse(
