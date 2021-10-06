@@ -135,6 +135,7 @@ parse_tapping_v2_samples <- function(file_path){
 featurize_tapping <- function(data, ...){
     tryCatch({
         data %>%
+            dplyr::filter(buttonid != "TappedButtonNone") %>%
             dplyr::filter(t < 20.5) %>%
             as.data.frame() %>%
             mhealthtools::get_tapping_features(...)

@@ -152,7 +152,7 @@ curate_phone_info <- function(data){
             str_detect(tolower(phoneInfo), "iphone.12|iphone12") ~ "iPhone 12",
             str_detect(tolower(phoneInfo), "iphone.13|iphone13") ~ "iPhone 13",
             str_detect(tolower(phoneInfo), "iphone.se|iphonese") ~ "iPhone SE",
-            str_detect(tolower(phoneInfo), "samsung|google|motorola|android|lge|htc|huawei|android|oneplus|nokia") ~ "iPhone SE",
+            str_detect(tolower(phoneInfo), "samsung|google|motorola|android|lge|htc|huawei|android|oneplus|nokia") ~ "Android",
             str_detect(tolower(phoneInfo), "ipod") ~ "iPod",
             str_detect(tolower(phoneInfo), "ipad") ~ "iPad",
             str_detect(tolower(phoneInfo), "simulator") ~ "Simulator",
