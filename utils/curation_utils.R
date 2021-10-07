@@ -124,7 +124,7 @@ curate_app_version <- function(data){
                         ",", 
                         into = c("version", "build"), 
                         remove = FALSE) %>%
-        dplyr::select(-build, -appVersion)
+        dplyr::select(-appVersion)
 }
 
 
@@ -168,3 +168,10 @@ remove_test_user <- function(data){
         dplyr::select(-dataGroups)
 }
 
+
+vectorise_optparse_string <- function(opt_string){
+    opt_string %>%
+        stringr::str_replace_all(" ", "") %>%
+        stringr::str_split(",") %>%
+        purrr::reduce(c)
+}
