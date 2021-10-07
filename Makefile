@@ -14,6 +14,7 @@ tapping_features_v2:
 	Rscript feature_extraction/tapping/extract_mhealthtools_tapping_features.R \
 	-g "~/git_token.txt" \
 	-i "syn15673381" \
+	-p "syn26215075" \
 	-o "mhealthtools_20secs_clean_button_none_tapping_v2_features.tsv" \
 	-n "run tapping feature extraction" \
 	-q "LIMIT 50";
