@@ -134,11 +134,17 @@ parse_tapping_v2_samples <- function(file_path){
 #' @return dataframe/tibble tapping features
 featurize_tapping <- function(data, ...){
     tryCatch({
+        data <- data %>%
+            dplyr::filter(t < 20.5)
+        
         data %>%
-            dplyr::filter(buttonid != "TappedButtonNone") %>%
-            dplyr::filter(t < 20.5) %>%
             as.data.frame() %>%
-            mhealthtools::get_tapping_features(...)
+            mhealthtools::get_tapping_features(...) %>% 
+            dplyr::mutate(
+                end_timestamp = max(
+                data$t, na.rm = T)) %>%
+            dplyr::relocate(error, .after = last_col())
+        
     }, error = function(err){
         error_msg <- stringr::str_squish(
             stringr::str_replace_all(
