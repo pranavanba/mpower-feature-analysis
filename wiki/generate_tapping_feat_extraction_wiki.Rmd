@@ -1,0 +1,98 @@
+# Feature Extraction - Tapping
+
+This wiki page is used to describe the data extracted for the tapping features information/description/QC processes. It will cover the following:
+
+* Wiki Info
+* Tapping Feature Description
+* QC for each extracted feature files (queried from provenance documentation)
+
+```{r, include = FALSE}
+library(synapser)
+library(tidyverse)
+library(knit2synapse)
+
+synapser::synLogin()
+```
+
+```{r, include = FALSE}
+FOLDER_ID  <- "syn26215075"
+```
+
+### Wiki Info
+```{r, message = FALSE, echo=FALSE}
+user = synapser::synGetUserProfile()$userName
+createdOn = lubridate::now() %>% strftime()
+
+data <- tibble::tibble(
+    metadata = c("generated_by", "createdOn"),
+    value = c(user, createdOn)
+)
+
+knitr::kable(data, "pipe")
+```
+
+
+### Feature Description:
+
+| Feature Name      | Definition                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| meanTapInter      | mean tapping interval                                                                             |
+| medianTapInter    | median tapping interval                                                                           |
+| iqrTapInter       | interquartile range tapping interval                                                              |
+| minTapInter       | minimum tapping interval                                                                          |
+| maxTapInter       | maximum tapping interval                                                                          |
+| skewTapInter      | skewness tapping interval                                                                         |
+| kurTapInter       | kurtosis tapping interval                                                                         |
+| sdTapInter        | standard deviation tapping interval                                                               |
+| madTapInter       | mean absolute deviation tapping interval                                                          |
+| cvTapInter        | coefficient of variation tapping interval                                                         |
+| rangeTapInter     | range tapping interval                                                                            |
+| tkeoTapInter      | teager-kaiser energy operator tapping interval                                                    |
+| ar1TapInter       | autocorrelation (lag = 1) tapping interval                                                        |
+| ar2TapInter       | autocorrelation (lag = 2) tapping interval                                                        |
+| fatigue10TapInter | difference in mean tapping interval between the first and last 10% of the tapping interval series |
+| fatigue25TapInter | difference in mean tapping interval between the first and last 25% of the tapping interval series |
+| fatigue50TapInter | difference in mean tapping interval between the first and last 50% of the tapping interval series |
+| meanDriftLeft     | mean drift in the left button                                                                     |
+| medianDriftLeft   | median drift in the left button                                                                   |
+| iqrDriftLeft      | interquartile range of drift in the left button                                                   |
+| minDriftLeft      | minimum of drift in the left button                                                               |
+| maxDriftLeft      | maximum of drift in the left button                                                               |
+| skewDriftLeft     | skewness of drift in the left button                                                              |
+| kurDriftLeft      | kurtosis of drift in the left button                                                              |
+| sdDriftLeft       | standard deviation of drift in the left button |
+| madDriftLeft      | mean absolute deviation of drift in the left button |
+| cvDriftLeft       | coefficient of variation of drift in the left button |
+| rangeDriftLeft    | range of drift in the left button |
+| meanDriftRight    | mean drift in the right button |
+| medianDriftRight  | median drift in the right button |
+| iqrDriftRight     | interquartile range of drift in the right button |
+| minDriftRight     | minimum of drift in the right button |
+| maxDriftRight     | maximum of drift in the right button |
+| skewDriftRight    | skewness of drift in the right button |
+| kurDriftRight     | kurtosis of drift in the right button |
+| sdDriftRight      | standard deviation of drift in the right button |
+| madDriftRight     | mean absolute deviation of drift in the right button |
+| cvDriftRight      | coefficient of variation of drift in the right button |
+| rangeDriftRight   | range of drift in the right button |
+| numberTap         | number of taps |
+| buttonNoneFreq    | frequency where neither the left or right buttons were hit |
+| corXY             | correlation between the X and Y coordinates of the hits |
+
+
+### Feature QC Documentation:
+```{r, echo=FALSE}
+data <- synGetChildren(FOLDER_ID)$asList() %>%
+    purrr::map_dfr(function(x){
+        id <- x$id
+        name <- x$name
+        provenance <- synGetProvenance(id)
+        description <- provenance$get("description")
+        tibble::tibble("id" = id,
+                       "file_name" = name,
+                       "description" = description)
+    })
+
+knitr::kable(data, "pipe")
+```
+
