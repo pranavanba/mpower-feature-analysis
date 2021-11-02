@@ -19,9 +19,9 @@ clean_tapping_features_v1:
 	Rscript feature_processing/tapping/clean_tapping_features.R \
 	-g "~/git_token.txt" \
 	-i "syn10374665" \
-	-f "syn26299031" \
+	-f "syn26344657" \
 	-p "syn26262474" \
-	-o "cleaned_mhealthtools_20secs_filter_button_none_tapping_v1_freeze_features.tsv" \
+	-o "cleaned_mhealthtools_20secs_tapping_v1_freeze_features.tsv" \
 	-n "clean tapping feature" \
 	-m "recordId, createdOn, healthCode, appVersion, phoneInfo, dataGroups, medTimepoint" \
 	-d "added metadata";
@@ -40,9 +40,9 @@ clean_tapping_features_v2:
 	Rscript feature_processing/tapping/clean_tapping_features.R \
 	-g "~/git_token.txt" \
 	-i "syn15673381" \
-	-f "syn26301264" \
+	-f "syn26235452" \
 	-p "syn26262362" \
-	-o "cleaned_mhealthtools_20secs_filter_button_none_tapping_v2_features.tsv" \
+	-o "cleaned_mhealthtools_20secs_tapping_v2_features.tsv" \
 	-n "clean tapping feature" \
 	-d "added metadata";
 aggregate_tapping_features_v2:
@@ -55,5 +55,25 @@ aggregate_tapping_features_v2:
 	-n "clean tapping feature, aggregate features" \
 	-d "added metadata" \
 	-a "healthCode";
+walk_features_v1:
+	Rscript feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R \
+	-g "~/git_token.txt" \
+	-i "syn10308918" \
+	-o "pdkit_rotation_walk30secs_freeze_features.tsv" \
+	-n "run walk feature extraction" \
+	-f "accel_walking_outbound.json.items, deviceMotion_walking_outbound.json.items, accel_walking_return.json.items, deviceMotion_walking_return.json.items" \
+	-p "syn26434895" \
+	-q "LIMIT 100" \
+	-v 1;
+walk_features_v2:
+	Rscript feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R \
+	-g "~/git_token.txt" \
+	-i "syn12514611" \
+	-o "pdkit_rotation_walk30secs_v2_features.tsv" \
+	-n "run walk feature extraction" \
+	-f "walk_motion.json" \
+	-p "syn26215077" \
+	-q "LIMIT 100" \
+	-v 2;
 
 	
