@@ -11,26 +11,10 @@ clean_cache <- function(){
         }) 
 }
 
-# knit wiki page
-knit2synapse::createAndKnitToFolderEntity(
-    file = "wiki/generate_tapping_feat_extraction_wiki.Rmd",
-    parentId = "syn26215070", 
-    wikiName = "Tapping",
-    folderName = "Tapping"
-)
-
-# knit wiki page
-knit2synapse::createAndKnitToFolderEntity(
-    file = "wiki/generate_tapping_feat_processed_wiki.Rmd",
-    parentId = "syn26215072", 
-    wikiName = "Tapping",
-    folderName = "Tapping"
-)
-
 # append here
 knit2synapse::createAndKnitToFileEntity(
     file = "analysis/tap_features_diagnostics.Rmd",
-    parentId = "syn26215071", 
+    parentId = "syn26411005", 
     fileName = "Tapping-Diagnostics"
 )
 

@@ -128,6 +128,25 @@ curate_app_version <- function(data){
 }
 
 
+curate_version_group <- function(data){
+    data %>%
+        dplyr::mutate(version_group = case_when(
+            stringr::str_detect(version, "version 0.") ~ "android",
+            stringr::str_detect(version, "version 1.0") ~ "version 1.0",
+            stringr::str_detect(version, "version 1.1") ~ "version 1.1",
+            stringr::str_detect(version, "version 1.2") ~ "version 1.2",
+            stringr::str_detect(version, "version 1.3") ~ "version 1.3",
+            stringr::str_detect(version, "version 1.4") ~ "version 1.4",
+            stringr::str_detect(version, "version 2.0") ~ "version 2.0",
+            stringr::str_detect(version, "version 2.1") ~ "version 2.1",
+            stringr::str_detect(version, "version 2.2") ~ "version 2.2",
+            stringr::str_detect(version, "version 2.3") ~ "version 2.3",
+            TRUE ~ "others"
+        ))
+}
+
+
+
 curate_med_timepoint <- function(data){
     if("answers.medicationTiming" %in% names(data)){
         data %>% 
@@ -174,4 +193,20 @@ vectorise_optparse_string <- function(opt_string){
         stringr::str_replace_all(" ", "") %>%
         stringr::str_split(",") %>%
         purrr::reduce(c)
+}
+
+
+parse_accel_data <- function(filePath){
+    jsonlite::fromJSON(filePath) %>%
+        dplyr::mutate(timestamp = timestamp - .$timestamp[1]) %>%
+        dplyr::select(t = timestamp, x, y, z)
+}
+
+parse_rotation_data <- function(filePath){
+    jsonlite::fromJSON(filePath) %>%
+        dplyr::mutate(t = timestamp - .$timestamp[1],
+                      x = .$rotationRate$x,
+                      y = .$rotationRate$y,
+                      z = .$rotationRate$z) %>% 
+        dplyr::select(t, x, y, z)
 }
