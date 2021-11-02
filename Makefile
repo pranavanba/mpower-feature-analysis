@@ -63,7 +63,6 @@ walk_features_v1:
 	-n "run walk feature extraction" \
 	-f "accel_walking_outbound.json.items, deviceMotion_walking_outbound.json.items, accel_walking_return.json.items, deviceMotion_walking_return.json.items" \
 	-p "syn26434895" \
-	-q "LIMIT 100" \
 	-v 1;
 walk_features_v2:
 	Rscript feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R \
@@ -73,7 +72,6 @@ walk_features_v2:
 	-n "run walk feature extraction" \
 	-f "walk_motion.json" \
 	-p "syn26215077" \
-	-q "LIMIT 100" \
 	-v 2;
 
 	
