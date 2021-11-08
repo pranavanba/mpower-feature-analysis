@@ -20,7 +20,6 @@ source("R/utils.R")
 #################################
 # Python objects
 ################################
-future::plan(multicore)
 synapseclient <- reticulate::import("synapseclient")
 pdkit_rotation_features <- reticulate::import("PDKitRotationFeatures")
 gait_feature_objs <- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = 750L)
@@ -60,22 +59,7 @@ GIT_URL <- githubr::getPermlink(
 
 ###########################
 #### helper functions ####
-###########################
-parse_accel_data <- function(filePath){
-    jsonlite::fromJSON(filePath) %>%
-        dplyr::mutate(timestamp = timestamp - .$timestamp[1]) %>%
-        dplyr::select(t = timestamp, x, y, z)
-}
-
-parse_rotation_data <- function(filePath){
-    jsonlite::fromJSON(filePath) %>%
-    dplyr::mutate(t = timestamp - .$timestamp[1],
-                  x = .$rotationRate$x,
-                  y = .$rotationRate$y,
-                  z = .$rotationRate$z) %>% 
-        dplyr::select(t, x, y, z)
-}
-
+##########################
 process_walk_samples <- function(accel, deviceMotion, feature_obj){
     #' Function to shape time series from json
     #' and make it into the valid formatting
