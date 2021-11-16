@@ -3,6 +3,9 @@ library(tidyverse)
 library(data.table)
 source("utils/helper_utils.R")
 
+
+PROJECT_ID <- config::get("project_id")
+FILE_VIEW_NAME <- config::get("file_view_name")
 MAPPING <- list(
     "resting" = "Rest",
     "tapping" = "Tapping", 
@@ -10,7 +13,6 @@ MAPPING <- list(
     "walk30secs" = "Walk 30 Seconds")
 TARGET_ANNOTATIONS <- c("features-extracted", 
                         "features-processed")
-ENTITY_FILE_VIEW_NAME <- "mPower File View Directory"
 
 #' Function for creating file view with annotations
 #' 
@@ -44,7 +46,7 @@ get_folder_target_id <- function(target, file_view_id){
 }
 
 main <- function(){
-    file_view_id <- synFindEntityId(ENTITY_FILE_VIEW_NAME, PROJECT_ID)
+    file_view_id <- synFindEntityId(FILE_VIEW_NAME, PROJECT_ID)
     
     purrr::map(TARGET_ANNOTATIONS, function(annot_target){
         folder_id <- get_folder_target_id(annot_target, 

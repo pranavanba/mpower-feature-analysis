@@ -3,12 +3,15 @@ library(tidyverse)
 library(data.table)
 source("utils/curation_utils.R")
 
-PROJECT_ID <- "syn26466825"
-FILE_VIEW_NAME <- "mPower File View Directory"
-
 synapser::synLogin()
 
-get_github_url()
+PROJECT_ID <- config::get("project_id")
+FILE_VIEW_NAME <- config::get("file_view_name")
+GIT_URL <- get_github_url(
+    git_token = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_path,
+    script_path = "create_pipeline_directory/generate_folders_org.R"
+)
 
 #' Function for creating file view with annotations
 #' 

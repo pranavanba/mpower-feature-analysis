@@ -1,0 +1,10 @@
+default:
+    project_id: "syn12030321"
+    file_view_name: "mPower File View Directory"
+    git: 
+        token_path: "~/git_token.txt"
+        repo_path: "arytontediarjo/mpower-feature-analysis"
+udall:
+    project_id: "syn26288244"
+
+
