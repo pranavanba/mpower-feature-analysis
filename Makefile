@@ -64,6 +64,15 @@ walk_features_v1:
 	-f "accel_walking_outbound.json.items, deviceMotion_walking_outbound.json.items, accel_walking_return.json.items, deviceMotion_walking_return.json.items" \
 	-p "syn26434895" \
 	-v 1;
+clean_walk_features_v1:
+	Rscript feature_processing/walk30secs/clean_walk30secs_features.R \
+	-g "~/git_token.txt" \
+	-i "syn10308918" \
+	-o "cleaned_pdkit_rotation_walk30secs_freeze_features.tsv" \
+	-n "run walk feature cleaning" \
+	-f "syn26434898" \
+	-m "recordId, createdOn, healthCode, appVersion, phoneInfo, dataGroups, medTimepoint" \
+	-p "syn26449904";
 walk_features_v2:
 	Rscript feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R \
 	-g "~/git_token.txt" \
@@ -73,5 +82,11 @@ walk_features_v2:
 	-f "walk_motion.json" \
 	-p "syn26215077" \
 	-v 2;
-
-	
+clean_walk_features_v2:
+	Rscript feature_processing/walk30secs/clean_walk30secs_features.R \
+	-g "~/git_token.txt" \
+	-i "syn12514611" \
+	-o "cleaned_pdkit_rotation_walk30secs_v2_features.tsv" \
+	-n "run walk feature cleaning" \
+	-f "syn26434900" \
+	-p "syn26341967";

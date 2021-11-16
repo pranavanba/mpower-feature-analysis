@@ -175,7 +175,7 @@ curate_phone_info <- function(data){
             str_detect(tolower(phoneInfo), "ipod") ~ "iPod",
             str_detect(tolower(phoneInfo), "ipad") ~ "iPad",
             str_detect(tolower(phoneInfo), "simulator") ~ "Simulator",
-            TRUE ~ phoneInfo
+            TRUE ~ "Others"
         ))
 }
 

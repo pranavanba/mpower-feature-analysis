@@ -11,11 +11,18 @@ clean_cache <- function(){
         }) 
 }
 
+# # append here
+# knit2synapse::createAndKnitToFileEntity(
+#     file = "analysis/mpower_v1_v2_feature_comparison/tap_features_diagnostics.Rmd",
+#     parentId = "syn26411005", 
+#     fileName = "Tapping-Diagnostics"
+# )
+
 # append here
 knit2synapse::createAndKnitToFileEntity(
-    file = "analysis/tap_features_diagnostics.Rmd",
+    file = "analysis/mpower_v1_v2_feature_comparison/walk30secs_features_diagnostics.Rmd",
     parentId = "syn26411005", 
-    fileName = "Tapping-Diagnostics"
+    fileName = "Walk30Secs-Diagnostics"
 )
 
 

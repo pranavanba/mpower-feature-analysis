@@ -55,6 +55,18 @@ option_list <- list(
                 help = "Which index to aggregate on")
 )
 
+aggregate_walk <- function(data, agg_vec){
+   data %>%
+        dplyr::group_by(
+            across(all_of(agg_vec))) %>%
+        dplyr::mutate(nrecords = n_distinct(recordId)) %>%
+        dplyr::ungroup() %>%
+        dplyr::group_by(across(c(all_of(agg_vec), nrecords))) %>%
+        dplyr::summarise(across(matches("^x|^y|^z|^AA|^rotation"),
+                                list("iqr" = IQR, "md" = median),
+                                na.rm = TRUE))
+}
+
 
 main <- function(){
     #' get parameter from optparse
@@ -106,15 +118,34 @@ main <- function(){
     # aggregate features if parameter is given
     if(!is.null(opt$aggregate)){
         agg_vec <- vectorise_optparse_string(opt$aggregate)
-        data <- data %>%
-            dplyr::group_by(
-                across(all_of(agg_vec))) %>%
-            dplyr::mutate(nrecords = n_distinct(recordId)) %>%
-            dplyr::ungroup() %>%
-            dplyr::group_by(across(c(all_of(agg_vec), nrecords))) %>%
-            dplyr::summarise(across(matches("^x|^y|^z|^AA|^rotation"),
-                                    list("iqr" = IQR, "md" = median),
-                                    na.rm = TRUE))
+        
+        feature_list <- list()
+        # get non rotation segments:
+        feature_list$non_rotation <- data %>%
+            dplyr::filter(is.na(rotation_omega)) %>%
+            dplyr::select(-rotation_omega)
+        
+        # get rotation segments:
+        feature_list$rotation <- data %>%
+            dplyr::filter(!is.na(rotation_omega)) %>%
+            dplyr::select(healthCode, 
+                          recordId, 
+                          medTimepoint,
+                          rotation_omega)
+        
+        # map through aggregated features
+        agg_features <- purrr::map(
+            feature_list, ~.x %>% 
+                aggregate_walk(c("healthCode")) %>%
+                dplyr::ungroup()) %>%
+            purrr::reduce(dplyr::left_join, 
+                          by = c("healthCode")) %>%
+            dplyr::mutate() %>%
+            dplyr::select(
+                healthCode,
+                nrecords = nrecords.x, 
+                everything(),
+                -nrecords.y)
     }
     
     # save to synapse
