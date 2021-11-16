@@ -13,8 +13,8 @@ library(reticulate)
 library(furrr)
 library(optparse)
 library(doMC)
-source("utils/reticulate_utils.R")
 source("utils/curation_utils.R")
+source("utils/helper_utils.R")
 
 #' Get Synapse Creds
 synapseclient <- reticulate::import("synapseclient")
