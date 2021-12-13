@@ -5,8 +5,9 @@ library(tidyverse)
 library(githubr)
 library(optparse)
 source("utils/curation_utils.R")
+source("utils/helper_utils.R")
 
-synapser::synLogin(authToken = "eyJ0eXAiOiJKV1QiLCJraWQiOiJXN05OOldMSlQ6SjVSSzpMN1RMOlQ3TDc6M1ZYNjpKRU9VOjY0NFI6VTNJWDo1S1oyOjdaQ0s6RlBUSCIsImFsZyI6IlJTMjU2In0.eyJhY2Nlc3MiOnsic2NvcGUiOlsidmlldyIsImRvd25sb2FkIiwibW9kaWZ5Il0sIm9pZGNfY2xhaW1zIjp7fX0sInRva2VuX3R5cGUiOiJQRVJTT05BTF9BQ0NFU1NfVE9LRU4iLCJpc3MiOiJodHRwczovL3JlcG8tcHJvZC0zODYtMC5wcm9kLnNhZ2ViYXNlLm9yZy9hdXRoL3YxIiwiYXVkIjoiMCIsIm5iZiI6MTYzOTQzMzg5OCwiaWF0IjoxNjM5NDMzODk4LCJqdGkiOiIxMzU1Iiwic3ViIjoiMzM5NDA0MiJ9.spDsFxZB4jm6Hxyl6XFQUbsCGDJYYx67ELePYxZlewajGRWfPk4jlNrYbaVbh74ZkjG_7tmwZqV6E2bi1CQ9LVD9N8h46Ytwjv0Lzv8l_B6Ase_V29VahHy1AL8nm8_0MvkFVND0PvYQUvjajwVeAtHxK3jYhhrzE57xwN7_27KvYKyZUT-QfW_gPJ-2VdCr-LJpVUeSg7E4qDfMEiTVxiM7PAg2vcX6kCJrC90LtlHQOiDHexK8lcr5f34cxWvbrGBAPzGBVLvhjNfnzObdBIg8R9WUKOM45I5OCi4g1wgHRxItQi7-SVwRHQtxtoDYiWMO6PDfyLCtVgFFulyRgw")
+synapser::synLogin()
 
 #' Option parser 
 option_list <- list(
@@ -117,3 +118,5 @@ main <- function(){
         used = c(feature_ref$tbl_id, feature_ref$feature_id),
         executed = git_url)
 }
+
+main()
