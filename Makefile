@@ -76,11 +76,11 @@ clean_walk_features_v1:
 walk_features_v2:
 	Rscript feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R \
 	-g "~/git_token.txt" \
-	-i "syn12514611" \
-	-o "pdkit_rotation_walk30secs_v2_features.tsv" \
+	-i "syn26459524" \
+	-o "pdkit_rotation_walk30secs_features_udall.tsv" \
 	-n "run walk feature extraction" \
 	-f "walk_motion.json" \
-	-p "syn26215077" \
+	-p "syn26467789" \
 	-v 2;
 clean_walk_features_v2:
 	Rscript feature_processing/walk30secs/clean_walk30secs_features.R \

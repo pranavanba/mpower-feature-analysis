@@ -50,10 +50,14 @@ reticulated_save_to_synapse <- function(syn,
                             data, 
                             output_filename, 
                             parent_id,
+                            annotations = NULL,
                             ...){
   data %>% 
     readr::write_tsv(output_filename)
-  file <- synapseclient$File(output_filename, parent = parent_id)
+  file <- synapseclient$File(
+    output_filename, 
+    parent = parent_id,
+    annotations = annotations)
   activity <- synapseclient$Activity(...)
   store_to_synapse <- syn$store(file, activity = activity)
   unlink(output_filename)
@@ -122,10 +126,13 @@ get_github_url <- function(git_token_path,
 save_to_synapse <- function(data, 
                             output_filename, 
                             parent,
+                            annotations = NULL,
                             ...){
   data %>% 
     readr::write_tsv(output_filename)
-  file <- File(output_filename, parent =  parent)
+  file <- File(output_filename, 
+               parent =  parent,
+               annotations = annotations)
   activity <- Activity(...)
   synStore(file, activity = activity)
   unlink(file$path)

@@ -23,7 +23,7 @@ syn$table_query_timeout <- 9999999
 
 #' Global Variables of Github Repository and where it is located
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
-SCRIPT_PATH <- "R/feature_extraction/tremor/extract_mhealthtools_tremor_features.R"
+SCRIPT_PATH <- "feature_extraction/tremor/extract_mhealthtools_tremor_features.R"
 
 #' Option parser 
 option_list <- list(

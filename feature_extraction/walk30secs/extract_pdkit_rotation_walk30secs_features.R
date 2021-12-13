@@ -242,6 +242,9 @@ main <- function(){
             data = ., 
             output_filename = opt$output_filename,
             parent_id = opt$parent_id, 
+            annotations = list(
+                pipelineStep = "features-extracted",
+                task = "walk30secs"),
             used = opt$table_id,
             name = opt$provenance_name,
             executed = git_url)
