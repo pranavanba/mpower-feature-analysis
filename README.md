@@ -37,9 +37,9 @@ docker ps -a
 ```zsh
 docker exec -it <CONTAINER_ID>\
 Rscript 'pipeline_formation/authenticate.R'\
--u <SYNAPSE_USERNAME>\
--p <SYNAPSE_PASSW>\
--g <GITHUB_TOKEN>
+  -u <SYNAPSE_USERNAME>\
+  -p <SYNAPSE_PASSW>\
+  -g <GITHUB_TOKEN>
 ```
 This will create an environment with your necessary credentials to run the analysis.
 
