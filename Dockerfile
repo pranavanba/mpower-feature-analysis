@@ -12,6 +12,9 @@ RUN git clone https://github.com/arytontediarjo/mpower-feature-analysis /root/mp
 ## change work dir
 WORKDIR /root/mpower-feature-analysis
 
+## Pull any updates
+RUN git pull
+
 ## python dependencies
 RUN python3 -m venv ~/env\
     && . ~/env/bin/activate \
