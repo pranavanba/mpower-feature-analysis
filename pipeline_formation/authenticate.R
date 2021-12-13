@@ -49,10 +49,10 @@ write_git_token <- function(token, path = "~/git_token.txt"){
 opt_parser = OptionParser(option_list=option_list)
 opt = parse_args(opt_parser)
 
-#' write synapse config
+#' writegi  synapse config
 write_synapse_config(username = opt$username,
                      password = opt$password,
-                     authtoken = opt$auth_token)
+                     auth_token = opt$auth_token)
 
 #' write git token
 write_git_token(token = opt$git_token)
