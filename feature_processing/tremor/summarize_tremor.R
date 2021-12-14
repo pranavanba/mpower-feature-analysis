@@ -3,10 +3,8 @@ library(githubr)
 library(data.table)
 library(furrr)
 library(future)
-source("R/utils/reticulate_utils.R")
+source("utils/helper_utils.R")
 
-#' used synapse python client -> better parallelization
-future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$Synapse()
 syn$login()
@@ -14,7 +12,7 @@ syn$table_query_timeout <- 9999999
 
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 GIT_TOKEN_PATH <- "~/git_token.txt"
-SCRIPT_PATH <- file.path("R", "data_summary","summarize_tremor.R")
+SCRIPT_PATH <- file.path("feature_processing", "tremor", "summarize_tremor.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 
@@ -40,22 +38,13 @@ KINETIC_MAPPING <- list(
 
 # get mapping for outputs
 OUTPUT_REF <- list(
-    tremor_v1 = list(
-        agg_hc = "mhealthtools_tremor_freeze_agg_healthcodes.tsv",
-        agg_record = "mhealthtools_tremor_freeze_agg_recordId.tsv",
-        feat_id = "syn26001251",
-        tbl_id = "syn10676309",
-        demo_id = "syn25782458",
-        parent_id = "syn25782484",
-        funs = "summarize_tremor"
-    ),
     tremor_v2 = list(
         agg_hc = "mhealthtools_tremor_v2_agg_healthcodes.tsv",
         agg_record = "mhealthtools_tremor_v2_agg_recordId.tsv",
-        feat_id = "syn25701650",
+        feat_id = "syn26215339",
         tbl_id = "syn12977322",
         demo_id = "syn25693310",
-        parent_id = "syn25999253",
+        parent_id = "syn26341966",
         funs = "summarize_tremor"
     )
 )
@@ -101,7 +90,7 @@ group_features <- function(feature, group) {
         dplyr::mutate(
             across(matches(".fr|.tm"), as.numeric)) %>%
         dplyr::group_by(across(all_of(c(group, 
-                                        "activityType", 
+                                        "fileColumnName", 
                                         "sensor", 
                                         "measurementType", 
                                         "axis")))) %>%
@@ -156,7 +145,7 @@ main <- function(){
             widen_features() %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
             dplyr::inner_join(demo, by = c("healthCode")) %>%
-            save_to_synapse(
+            reticulated_save_to_synapse(
                 syn = syn,
                 synapseclient = synapseclient,
                 data = .,
@@ -169,13 +158,13 @@ main <- function(){
        # get features aggregated with healthcode
        feature %>%
             dplyr::inner_join(identifier, by = c("recordId")) %>%
-            dplyr::group_by(healthCode, activityType) %>%
+            dplyr::group_by(healthCode, fileColumnName) %>%
             dplyr::mutate(nrecords = n_distinct(recordId)) %>%
             map_kinetic_features() %>%
             group_features(group = c("healthCode", "nrecords")) %>%
             widen_features() %>%
-            dplyr::inner_join(demo, by = c("healthCode")) %>%
-            save_to_synapse(
+            dplyr::inner_join(demo, by = c("healthCode")) %>% 
+            reticulated_save_to_synapse(
                 syn = syn,
                 synapseclient = synapseclient,
                 data = .,

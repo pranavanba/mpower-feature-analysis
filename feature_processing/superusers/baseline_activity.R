@@ -65,10 +65,13 @@ main <- function(){
     opt_parser = OptionParser(option_list=option_list)
     opt = parse_args(opt_parser)
     
+    # query param
+    query_param = "`substudyMemberships` LIKE '%superusers%'"
+    
     # Global Variables
     git_url <- get_github_url(
         git_token_path = opt$git_token,
-        git_repo = config::get("token_path"),
+        git_repo = config::get("git")$repo,
         script_path = "feature_processing/tapping/clean_tapping_features.R")
     
     # Feature reference
@@ -83,15 +86,17 @@ main <- function(){
     
     # get & clean metadata from synapse table
     metadata <- synTableQuery(glue::glue(
-        "SELECT {metadata} FROM {table_id} where `substudyMemberships` LIKE '%superusers%'",
+        "SELECT {metadata} FROM {table_id} where {query_param}",
         metadata = opt$metadata, 
-        table_id = feature_ref$tbl_id))$asDataFrame() %>%
+        table_id = feature_ref$tbl_id,
+        query_param = query_param))$asDataFrame() %>%
         dplyr::select(-ROW_ID, -ROW_VERSION) %>% 
         dplyr::group_by(healthCode) %>% 
         nest() %>% 
         dplyr::mutate(data = purrr::map(data, get_baseline_data)) %>%
         unnest(data) %>% 
-        dplyr::ungroup()
+        dplyr::ungroup() %>%
+        dplyr::select(recordId)
     
     
     # merge feature with cleaned metadata
@@ -102,11 +107,11 @@ main <- function(){
         dplyr::select(recordId, 
                       createdOn,
                       healthCode, 
-                      version, 
-                      build,
                       medTimepoint,
-                      phoneInfo,
-                      everything())
+                      everything(),
+                      -version, 
+                      -build,
+                      -phoneInfo)
     
     # save to synapse
     save_to_synapse(
