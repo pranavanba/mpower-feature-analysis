@@ -12,6 +12,7 @@ library(tidyverse)
 library(githubr)
 library(optparse)
 source("utils/curation_utils.R")
+source("utils/helper_utils.R")
 
 synapser::synLogin()
 
@@ -27,11 +28,11 @@ option_list <- list(
                 help = "Features ID for tapping"),
     make_option(c("-o", "--output_filename"), 
                 type = "character", 
-                default = "cleaned_mhealthtools_20secs_filter_button_none_tapping_features_mpowerV2.tsv",
+                default = "cleaned_mhealthtools_20secs_tapping_features_v2.tsv",
                 help = "Output file name"),
     make_option(c("-p", "--parent_id"), 
                 type = "character", 
-                default = "syn25691532",
+                default = "syn26262362",
                 help = "Output parent ID"),
     make_option(c("-g", "--git_token"), 
                 type = "character", 
@@ -62,15 +63,15 @@ main <- function(){
     opt = parse_args(opt_parser)
     
     # Global Variables
-    git_url <- get_github_url(
-        git_token_path = opt$git_token,
-        git_repo = config::get("token_path"),
-        script_path = "feature_processing/tapping/clean_tapping_features.R")
+    git_url <- get_github_url(git_token_path = config::get("git")$token_path,
+                              git_repo = config::get("git")$repo,
+                              script_path = "feature_processing/tapping/clean_tapping_features.R")
     
     # Feature reference
     feature_ref <- list(
         feature_id = opt$feature_id,
         tbl_id = opt$table_id,
+        demo_id = 'syn26601401',
         output_parent_id = opt$parent_id,
         output_filename = opt$output_filename,
         git_url = git_url,
@@ -89,11 +90,16 @@ main <- function(){
         curate_phone_info() %>%
         remove_test_user()
     
+    demo <- synGet(feature_ref$demo_id)$path %>%
+        fread(.) %>%
+        dplyr::select(healthCode, age, sex, diagnosis)
+    
     # merge feature with cleaned metadata
     data <- synGet(feature_ref$feature_id)$path %>% 
         fread() %>%
         dplyr::inner_join(
             metadata, by = c("recordId")) %>%
+        dplyr::inner_join(demo, by = c("healthCode")) %>%
         dplyr::select(recordId, 
                       createdOn,
                       healthCode, 
@@ -101,6 +107,9 @@ main <- function(){
                       build,
                       medTimepoint,
                       phoneInfo,
+                      age,
+                      sex,
+                      diagnosis,
                       everything())
     
     # aggregate features if parameter is given

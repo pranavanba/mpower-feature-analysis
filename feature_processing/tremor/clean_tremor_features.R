@@ -38,18 +38,43 @@ KINETIC_MAPPING <- list(
 
 # get mapping for outputs
 OUTPUT_REF <- list(
-    tremor_v2 = list(
-        agg_hc = "mhealthtools_tremor_v2_agg_healthcodes.tsv",
-        agg_record = "mhealthtools_tremor_v2_agg_recordId.tsv",
-        feat_id = "syn26215339",
-        tbl_id = "syn12977322",
-        demo_id = "syn25693310",
-        parent_id = "syn26341966",
-        funs = "summarize_tremor"
-    )
+    agg_hc = "mhealthtools_tremor_v2_agg_healthcodes.tsv",
+    agg_record = "mhealthtools_tremor_v2_agg_recordId.tsv",
+    feat_id = "syn26215339",
+    best_features_id = "syn17088603",
+    tbl_id = "syn12977322",
+    demo_id = "syn26601401",
+    parent_id = "syn26341966",
+    funs = "summarize_tremor"
 )
 
 
+#' function to get top n features
+top_n_features <- function(syn, best_features_id, n = 30){
+    syn$get(best_features_id)$path %>% 
+        fread() %>%
+        dplyr::filter(assay == "rest") %>%
+        dplyr::slice(1:n) %>% 
+        .$Feature %>%
+        glue::glue_collapse(sep = "|")
+}
+
+#' function to get table and parse 
+#' medication columns accordingly
+get_table <- function(syn, tbl_id){
+    syn$tableQuery(
+        glue::glue("SELECT * FROM {id}", id = tbl_id))$asDataFrame() %>%
+        dplyr::rename_with(
+            .cols = matches("answers.medicationTiming"), 
+            .fn = ~"medTimepoint") %>%
+        dplyr::mutate(medTimepoint = unlist(medTimepoint)) %>%
+        dplyr::select(recordId,
+                      phoneInfo,
+                      appVersion,
+                      healthCode, 
+                      medTimepoint) %>%
+        tibble::as_tibble()
+}
 
 #' function to map kinetic features based on 
 #' mpower tools to mhealthtools
@@ -116,64 +141,50 @@ widen_features <- function(feature){
 }
 
 main <- function(){
-    # map each activity
-    purrr::walk(names(OUTPUT_REF), function(activity){
+    # get features
+    feature <- OUTPUT_REF$feat_id %>% 
+        syn$get(.) %>% 
+        .$path %>% 
+        fread() %>%
+        dplyr::filter(is.na(error))
+    
+    # get demographics
+    demo <- OUTPUT_REF$demo_id %>% 
+        syn$get() %>% 
+        .$path %>% 
+        fread()
+    
+    # get identifiers
+    identifier <- get_table(
+        syn = syn,
+        tbl_id = OUTPUT_REF$tbl_id)
         
-        # get features
-        feature <- OUTPUT_REF[[activity]]$feat_id %>% 
-            syn$get() %>% 
-            .$path %>% 
-            fread() %>%
-            dplyr::filter(is.na(error))
-        
-        # get demographics
-        demo <- OUTPUT_REF[[activity]]$demo_id %>% 
-            syn$get() %>% 
-            .$path %>% 
-            fread()
-        
-        # get identifiers
-        identifier <- syn$tableQuery(
-            glue::glue(
-                "select recordId, healthCode from {tbl_id}", 
-                tbl_id = OUTPUT_REF[[activity]]$tbl_id))$asDataFrame()
-        
-        # get features aggregated with recordId
-       feature %>%
-            map_kinetic_features()  %>%
-            group_features(group = c("recordId")) %>%
-            widen_features() %>%
-            dplyr::inner_join(identifier, by = c("recordId")) %>%
-            dplyr::inner_join(demo, by = c("healthCode")) %>%
-            reticulated_save_to_synapse(
-                syn = syn,
-                synapseclient = synapseclient,
-                data = .,
-                output_filename = OUTPUT_REF[[activity]]$agg_record,
-                parent= OUTPUT_REF[[activity]]$parent_id,
-                used = OUTPUT_REF[[activity]]$feat_id,
-                executed = GIT_URL, 
-                name = "aggregate tremor by records")
-       
-       # get features aggregated with healthcode
-       feature %>%
-            dplyr::inner_join(identifier, by = c("recordId")) %>%
-            dplyr::group_by(healthCode, fileColumnName) %>%
-            dplyr::mutate(nrecords = n_distinct(recordId)) %>%
-            map_kinetic_features() %>%
-            group_features(group = c("healthCode", "nrecords")) %>%
-            widen_features() %>%
-            dplyr::inner_join(demo, by = c("healthCode")) %>% 
-            reticulated_save_to_synapse(
-                syn = syn,
-                synapseclient = synapseclient,
-                data = .,
-                output_filename = OUTPUT_REF[[activity]]$agg_hc,
-                parent= OUTPUT_REF[[activity]]$parent_id,
-                used = OUTPUT_REF[[activity]]$feat_id,
-                executed = GIT_URL,
-                name = "aggregate tremor by healthcodes")
-    })
+    # get features aggregated with recordId
+   feature %>%
+       map_kinetic_features()  %>%
+       group_features(group = c("recordId")) %>%
+       widen_features() %>%
+       dplyr::inner_join(identifier, by = c("recordId")) %>%
+       dplyr::inner_join(demo, by = c("healthCode")) %>% 
+       dplyr::select(recordId,
+                  healthCode, 
+                  diagnosis, 
+                  age,
+                  sex, 
+                  fileColumnName,
+                  medTimepoint,
+                  matches(top_n_features(
+                      syn = syn,
+                      best_features_id = OUTPUT_REF$best_features_id))) %>%
+   reticulated_save_to_synapse(
+        syn = syn,
+        synapseclient = synapseclient,
+        data = .,
+        output_filename = OUTPUT_REF$agg_record,
+        parent= OUTPUT_REF$parent_id,
+        used = OUTPUT_REF$feat_id,
+        executed = GIT_URL, 
+        name = "aggregate tremor by records")
 }
 
 main()

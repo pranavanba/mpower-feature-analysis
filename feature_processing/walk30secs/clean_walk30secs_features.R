@@ -83,6 +83,7 @@ main <- function(){
     feature_ref <- list(
         feature_id = opt$feature_id,
         tbl_id = opt$table_id,
+        demo_id = 'syn26601401',
         output_parent_id = opt$parent_id,
         output_filename = opt$output_filename,
         git_url = git_url,
@@ -101,11 +102,18 @@ main <- function(){
         curate_phone_info() %>%
         remove_test_user()
     
+    # get demo
+    demo <- synGet(feature_ref$demo_id)$path %>%
+        fread(.) %>%
+        dplyr::select(healthCode, age, sex, diagnosis)
+    
     # merge feature with cleaned metadata
     data <- synGet(feature_ref$feature_id)$path %>% 
         fread() %>%
         dplyr::inner_join(
             metadata, by = c("recordId")) %>%
+        dplyr::inner_join(
+            demo, by = c("healthCode")) %>%
         dplyr::select(recordId, 
                       createdOn,
                       healthCode, 
@@ -113,6 +121,9 @@ main <- function(){
                       build,
                       medTimepoint,
                       phoneInfo,
+                      age,
+                      sex,
+                      diagnosis,
                       everything())
     
     # aggregate features if parameter is given

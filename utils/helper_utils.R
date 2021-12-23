@@ -116,7 +116,7 @@ get_github_url <- function(git_token_path,
                            git_repo,
                            script_path,
                            ...){
-  setGithubToken(readLines(git_token_path))
+  githubr::setGithubToken(readLines(git_token_path))
   githubr::getPermlink(
     git_repo, 
     repositoryPath = script_path,

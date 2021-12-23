@@ -1,0 +1,17 @@
+default:
+    repo_endpoint: "arytontediarjo/mpower-feature-analysis"
+    git_token_path: "~/git_token.txt"
+v2:
+    tapping:
+        feature_extraction:
+            table_id: "syn15673381"
+            parent_id: "syn26215075"
+            output_filename: "mhealthtools_20secs_tapping_v2_features.tsv"
+        feature_processing:
+            parent_id: "syn26262362"
+            output_filename: "cleaned_mhealthtools_20secs_tapping_v2_features.tsv"
+        summarized_features:
+            parent_id: "syn26262362"
+            output_filename: "summarized_mhealthtools_20secs_tapping_v2_features.tsv"
+v1:
+        

@@ -13,11 +13,13 @@ CURRENT_YEAR <- lubridate::year(lubridate::now())
 ####################################
 GIT_REPO <- "arytontediarjo/feature_extraction_codes"
 GIT_TOKEN_PATH <- "~/git_token.txt"
-SCRIPT_PATH <- file.path("R", "get_demographics.R")
+SCRIPT_PATH <- file.path("feature_extraction", 
+                         "demographics",
+                         "get_demographics.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
-OUTPUT_FILE <- "demographics_v2.tsv"
-OUTPUT_PARENT_ID <- "syn25691532"
+OUTPUT_FILE <- "extracted_demographics_v2.tsv"
+OUTPUT_PARENT_ID <- "syn26601399"
 diagnosis_levels <- c("no_answer", "control", "parkinsons")
 sex_levels <- c("no_answer", "male", "female")
 
