@@ -12,7 +12,9 @@ syn$table_query_timeout <- 9999999
 
 GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
 GIT_TOKEN_PATH <- "~/git_token.txt"
-SCRIPT_PATH <- file.path("feature_processing", "tremor", "summarize_tremor.R")
+SCRIPT_PATH <- file.path("feature_processing", 
+                         "tremor", 
+                         "clean_tremor_features.R")
 setGithubToken(readLines(GIT_TOKEN_PATH))
 GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
 
