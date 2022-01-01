@@ -1,3 +1,10 @@
+###########################################################
+#' Script to clean tremor features
+#' based on 30 best features from genetic algo
+#' Requires: reticulated python (parallel group by)
+#' 
+#' @author: aryton.tediarjo@sagebase.org
+############################################################
 library(tidyverse)
 library(githubr)
 library(data.table)
@@ -40,8 +47,7 @@ KINETIC_MAPPING <- list(
 
 # get mapping for outputs
 OUTPUT_REF <- list(
-    agg_hc = "mhealthtools_tremor_v2_agg_healthcodes.tsv",
-    agg_record = "mhealthtools_tremor_v2_agg_recordId.tsv",
+    agg_record = "cleaned_mhealthtools_tremor_features_v2.tsv",
     feat_id = "syn26215339",
     best_features_id = "syn17088603",
     tbl_id = "syn12977322",
@@ -69,8 +75,11 @@ get_table <- function(syn, tbl_id){
         dplyr::rename_with(
             .cols = matches("answers.medicationTiming"), 
             .fn = ~"medTimepoint") %>%
-        dplyr::mutate(medTimepoint = unlist(medTimepoint)) %>%
+        dplyr::mutate(
+            medTimepoint = unlist(medTimepoint), 
+            createdOn = as.character(lubridate::as_datetime(createdOn/1000))) %>%
         dplyr::select(recordId,
+                      createdOn,
                       phoneInfo,
                       appVersion,
                       healthCode, 
@@ -169,22 +178,26 @@ main <- function(){
        dplyr::inner_join(identifier, by = c("recordId")) %>%
        dplyr::inner_join(demo, by = c("healthCode")) %>% 
        dplyr::select(recordId,
-                  healthCode, 
-                  diagnosis, 
-                  age,
-                  sex, 
-                  fileColumnName,
-                  medTimepoint,
-                  matches(top_n_features(
-                      syn = syn,
-                      best_features_id = OUTPUT_REF$best_features_id))) %>%
-   reticulated_save_to_synapse(
+                     createdOn,
+                     healthCode, 
+                     diagnosis, 
+                     age,
+                     sex, 
+                     fileColumnName,
+                     medTimepoint,
+                     matches(
+                         top_n_features(
+                            syn = syn,
+                            best_features_id = OUTPUT_REF$best_features_id))) %>%
+       # save data via reticulated synapse
+       reticulated_save_to_synapse(
         syn = syn,
         synapseclient = synapseclient,
         data = .,
         output_filename = OUTPUT_REF$agg_record,
         parent= OUTPUT_REF$parent_id,
-        used = OUTPUT_REF$feat_id,
+        used = c(OUTPUT_REF$feat_id, 
+                 OUTPUT_REF$best_features_id),
         executed = GIT_URL, 
         name = "aggregate tremor by records")
 }

@@ -8,48 +8,12 @@ source("utils/curation_utils.R")
 source("utils/helper_utils.R")
 
 synapser::synLogin()
+CONFIG_PATH <- "templates/config.yaml"
 
-#' Option parser 
-option_list <- list(
-    make_option(c("-i", "--table_id"), 
-                type = "character", 
-                default = "syn15673381",
-                help = "Synapse ID of mPower Tapping-Activity table entity"),
-    make_option(c("-f", "--feature_id"), 
-                type = "character", 
-                default = "syn26344786",
-                help = "Features ID for tapping"),
-    make_option(c("-o", "--output_filename"), 
-                type = "character", 
-                default = "mhealthtools_20secs_tapping_v2_features.tsv",
-                help = "Output file name"),
-    make_option(c("-p", "--parent_id"), 
-                type = "character", 
-                default = "syn25691532",
-                help = "Output parent ID"),
-    make_option(c("-g", "--git_token"), 
-                type = "character", 
-                default = "~/git_token.txt",
-                help = "Path to github token for code provenance"),
-    make_option(c("-n", "--provenance_name"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance parameter for feature extraction"),
-    make_option(c("-d", "--provenance_description"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance description"),
-    make_option(c("-m", "--metadata"), 
-                type = "character", 
-                default = "recordId, createdOn, healthCode, appVersion, phoneInfo, dataGroups, `answers.medicationTiming`",
-                help = "Metadata to keep for cleaned data"),
-    make_option(c("-a", "--aggregate"), 
-                type = "character",
-                default = NULL,
-                help = "Which index to aggregate on")
-)
+ref <- config::get(file = CONFIG_PATH)
+ref_list <- list(ref$tapping, ref$tremor, ref$walk)
 
-get_baseline_data <- function(data){
+filter_enrollment <- function(data){
     data %>% 
         dplyr::arrange(createdOn) %>% 
         dplyr::mutate(
@@ -59,69 +23,70 @@ get_baseline_data <- function(data){
         dplyr::select(-days_since_start)
 }
 
-
-main <- function(){
-    #' get parameter from optparse
-    opt_parser = OptionParser(option_list=option_list)
-    opt = parse_args(opt_parser)
-    
-    # query param
-    query_param = "`substudyMemberships` LIKE '%superusers%'"
-    
-    # Global Variables
-    git_url <- get_github_url(
-        git_token_path = opt$git_token,
-        git_repo = config::get("git")$repo,
-        script_path = "feature_processing/tapping/clean_tapping_features.R")
-    
-    # Feature reference
-    feature_ref <- list(
-        feature_id = opt$feature_id,
-        tbl_id = opt$table_id,
-        output_parent_id = opt$parent_id,
-        output_filename = opt$output_filename,
-        name = opt$provenance_name,
-        description = opt$provenance_description,
-        metadata = opt$metadata)
-    
+get_baseline <- function(table){
     # get & clean metadata from synapse table
-    metadata <- synTableQuery(glue::glue(
-        "SELECT {metadata} FROM {table_id} where {query_param}",
-        metadata = opt$metadata, 
-        table_id = feature_ref$tbl_id,
-        query_param = query_param))$asDataFrame() %>%
-        dplyr::select(-ROW_ID, -ROW_VERSION) %>% 
+    table %>%
+        dplyr::select(-ROW_ID, 
+                      -ROW_VERSION,
+                      recordId, 
+                      healthCode, 
+                      createdOn) %>% 
         dplyr::group_by(healthCode) %>% 
         nest() %>% 
         dplyr::mutate(data = purrr::map(data, get_baseline_data)) %>%
         unnest(data) %>% 
         dplyr::ungroup() %>%
         dplyr::select(recordId)
+}
+
+
+main <- function(){
+    # query param
+    query_param = "`substudyMemberships` LIKE '%superusers%'"
     
+    # Global Variables
+    git_url <- get_github_url(
+        git_token_path = ref$git_token_path,
+        git_repo = ref$repo_endpoint,
+        script_path = "feature_processing/superusers/baseline_activity.R")
     
-    # merge feature with cleaned metadata
-    data <- synGet(feature_ref$feature_id)$path %>% 
-        fread() %>%
-        dplyr::inner_join(
-            metadata, by = c("recordId")) %>%
-        dplyr::select(recordId, 
-                      createdOn,
-                      healthCode, 
-                      medTimepoint,
-                      everything(),
-                      -version, 
-                      -build,
-                      -phoneInfo)
-    
-    # save to synapse
-    save_to_synapse(
-        data = data,
-        output_filename = feature_ref$output_filename, 
-        parent = feature_ref$output_parent_id,
-        name = feature_ref$name,
-        description = feature_ref$description,
-        used = c(feature_ref$tbl_id, feature_ref$feature_id),
-        executed = git_url)
+    purrr::map(ref_list, function(activity_ref){
+        feature_id <- synapser::synFindEntityId(
+            activity_ref$aggregate_records$output_filename,
+            activity_ref$aggregate_records$parent_id)
+        table_id <- activity_ref$table_id
+        output_parent_id <- activity_ref$baseline_superusers$parent_id
+        output_filename <- activity_ref$baseline_superusers$output_filename
+        provenance_name <- "get superusers data"
+        provenance_description <- "filter superusers baseline data"
+        
+        metadata <- get_table(
+            synapse_tbl = table_id, 
+            query_params = "where `substudyMemberships` LIKE '%superusers%'") %>%
+            get_baseline()
+        
+        # merge feature with cleaned metadata
+        data <- synGet(feature_id)$path %>% 
+            fread() %>%
+            dplyr::inner_join(
+                metadata, by = c("recordId")) %>%
+            dplyr::select(recordId, 
+                          createdOn,
+                          healthCode, 
+                          medTimepoint,
+                          diagnosis,
+                          everything(),
+                          -matches("build|phoneInfo|error|version"))
+        # save to synapse
+        save_to_synapse(
+            data = data,
+            output_filename = output_filename, 
+            parent = output_parent_id,
+            name = provenance_name,
+            description = provenance_description,
+            used = c(table_id, feature_id),
+            executed = git_url)
+    })
 }
 
 main()

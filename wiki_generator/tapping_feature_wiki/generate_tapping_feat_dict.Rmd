@@ -78,21 +78,3 @@ knitr::kable(data, "pipe")
 | numberTap         | number of taps |
 | buttonNoneFreq    | frequency where neither the left or right buttons were hit |
 | corXY             | correlation between the X and Y coordinates of the hits |
-
-
-### Feature QC Documentation:
-```{r, echo=FALSE}
-data <- synGetChildren(FOLDER_ID)$asList() %>%
-    purrr::map_dfr(function(x){
-        id <- x$id
-        name <- x$name
-        provenance <- synGetProvenance(id)
-        description <- provenance$get("description")
-        tibble::tibble("id" = id,
-                       "file_name" = name,
-                       "description" = description)
-    })
-
-knitr::kable(data, "pipe")
-```
-
