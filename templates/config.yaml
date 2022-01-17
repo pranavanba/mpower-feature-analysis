@@ -7,6 +7,12 @@ v2:
         feature_extraction:
             parent_id: "syn26601399"
             output_filename: "demographics_v2.tsv"
+        baseline_superusers:
+            parent_id: "syn26142249"
+            output_filename: "baseline_superusers_demographics.tsv"
+            provenance:
+                name: "filter based on superusers"
+                description: "filter demographics of superusers"
     tapping:
         table_id: "syn15673381"
         feature_extraction:
@@ -15,12 +21,18 @@ v2:
             provenance:
                 name: "extract tapping features"
                 description: "filter to 20 seconds for each reading, extract features using mhealthtools"
-        aggregate_records:
+        clean:
             parent_id: "syn26262362"
-            output_filename: "mhealthtools_20secs_tapping_features_v2_agg_record.tsv"
+            output_filename: "mhealthtools_20secs_tapping_features_v2_cleaned.tsv"
             provenance:
-                name: "aggregate by record-level"
-                description: "aggregate by record-level, merge with demographics"
+                name: "clean features"
+                description: "clean features, merge with demographics"
+        aggregate_users:
+            parent_id: "syn26262362"
+            output_filename: "mhealthtools_20secs_tapping_features_v2_agg_users.tsv"
+            provenance:
+                name: "aggregate tappin user-wise"
+                description: "aggregate user-wise, merge demo"
         baseline_superusers: 
             parent_id: "syn26142249"
             output_filename: "baseline_superusers_tapping_features.tsv"
@@ -31,7 +43,7 @@ v2:
         table_id: "syn12977322"
         feature_extraction:
             parent_id: "syn26215076"
-            output_filename: "mhealthtools_tremor_features_mpower_v2.tsv"
+            output_filename: "mhealthtools_tremor_features_v2.tsv"
         aggregate_records:
             parent_id: "syn26341966"
             output_filename: "mhealthtools_tremor_features_v2_agg_record.tsv"
@@ -46,12 +58,12 @@ v2:
             provenance:
                 name: "extract walk30secs features"
                 description: "extract using PDkit Rotation Features"
-        aggregate_records:
+        clean:
             parent_id: "syn26341967"
-            output_filename: "pdkit_rotation_walk_features_v2_agg_record.tsv"
+            output_filename: "pdkit_rotation_walk_features_v2_cleaned.tsv"
             provenance:
-                name: "aggregate walk 30 seconds record-wise"
-                description: "aggregate recordwise, merge demo"
+                name: "clean walk30 seconds data"
+                description: "merged with demographics, cleaned test_user etc"
         aggregate_users:
             parent_id: "syn26341967"
             output_filename: "pdkit_rotation_walk_features_v2_agg_user.tsv"
@@ -63,3 +75,11 @@ v2:
             output_filename: "baseline_superusers_walk30secs_features.tsv"
             provenance:
                 name: "filter superusers"
+    pd_severity:
+        baseline_superusers:
+            parent_id: "syn26142249"
+            output_filename: "baseline_superusers_PD_conf_score.tsv"
+            provenance:
+                name: "predict on superusers"
+                description: "user mpowerV1 data, predict on superusers"
+                
