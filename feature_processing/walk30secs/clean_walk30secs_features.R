@@ -45,9 +45,6 @@ separate_rotation_non_rotation <- function(data){
                       createdOn,
                       medTimepoint,
                       phoneInfo,
-                      age,
-                      sex,
-                      diagnosis,
                       rotation_omega)
     return(feature_list)
 }
@@ -73,8 +70,7 @@ main <- function(){
     
     # output reference
     output_ref <- list(
-        parent_id = ref$walk$aggregate_records$parent_id,
-        agg_records = ref$walk$aggregate_records,
+        clean = ref$walk$clean,
         agg_users = ref$walk$aggregate_users
     )
     
@@ -101,10 +97,12 @@ main <- function(){
     # merge feature with cleaned metadata
     data <- synGet(input_ref$feature_id)$path %>% 
         fread() %>%
+        dplyr::filter(!is.na(window)) %>%
+        dplyr::rowwise() %>%
+        dplyr::mutate(window = strsplit(window, "_")[[1]][[2]]) %>%
+        dplyr::ungroup() %>%
         dplyr::inner_join(
-            metadata, by = c("recordId")) %>%
-        dplyr::inner_join(
-            demo, by = c("healthCode")) %>%
+            metadata, by = c("recordId"))  %>%
         dplyr::select(recordId, 
                       createdOn,
                       healthCode, 
@@ -112,9 +110,6 @@ main <- function(){
                       build,
                       medTimepoint,
                       phoneInfo,
-                      age,
-                      sex,
-                      diagnosis,
                       everything())
         
         feature_list <- data %>% separate_rotation_non_rotation()
@@ -123,60 +118,26 @@ main <- function(){
         # map through aggregated features
         agg_users <- purrr::map(
             feature_list, ~.x %>% 
-                aggregate_walk_features(c("healthCode",
-                                          "diagnosis",
-                                          "sex",
-                                          "age")) %>%
+                aggregate_walk_features(c("healthCode")) %>%
                 dplyr::ungroup()) %>%
             purrr::reduce(dplyr::left_join, 
-                          by = c("healthCode",
-                                 "diagnosis",
-                                 "sex",
-                                 "age")) %>%
-            dplyr::mutate() %>%
+                          by = c("healthCode")) %>%
+            dplyr::inner_join(
+                demo, by = c("healthCode")) %>%
             dplyr::select(
                 healthCode,
                 sex, age, diagnosis,
                 nrecords = nrecords.x, 
                 everything(),
                 -nrecords.y)
-        
-        # map through aggregated features
-        agg_records <- purrr::map(
-            feature_list, ~.x %>% 
-                aggregate_walk_features(c("recordId", 
-                                          "createdOn",
-                                          "healthCode", 
-                                          "medTimepoint",
-                                          "phoneInfo",
-                                          "age",
-                                          "sex",
-                                          "diagnosis")) %>%
-                dplyr::ungroup()) %>%
-            purrr::reduce(dplyr::left_join, 
-                          by = c("recordId", 
-                                 "createdOn",
-                                 "healthCode", 
-                                 "medTimepoint",
-                                 "phoneInfo",
-                                 "age",
-                                 "sex",
-                                 "diagnosis")) %>%
-            dplyr::mutate() %>%
-            dplyr::select(
-                recordId,
-                healthCode,
-                medTimepoint,
-                everything(),
-                -matches("nrecords"))
 
     # save to synapse (record-level)
     save_to_synapse(
-        data = agg_records,
-        output_filename = output_ref$agg_records$output_filename, 
-        parent = output_ref$agg_records$parent_id,
-        name = output_ref$agg_records$provenance$name,
-        description = output_ref$agg_records$provenance$description,
+        data = data,
+        output_filename = output_ref$clean$output_filename, 
+        parent = output_ref$clean$parent_id,
+        name = output_ref$clean$provenance$name,
+        description = output_ref$clean$provenance$description,
         used = c(input_ref$feature_id, 
                  input_ref$table_id),
         executed = git_url)
