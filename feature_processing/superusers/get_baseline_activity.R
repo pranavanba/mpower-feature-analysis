@@ -25,18 +25,20 @@ filter_enrollment <- function(data){
 
 get_baseline <- function(table){
     # get & clean metadata from synapse table
-    table %>%
-        dplyr::select(-ROW_ID, 
-                      -ROW_VERSION,
-                      recordId, 
-                      healthCode, 
-                      createdOn) %>% 
+    table %>% 
         dplyr::group_by(healthCode) %>% 
         nest() %>% 
-        dplyr::mutate(data = purrr::map(data, get_baseline_data)) %>%
+        dplyr::mutate(data = purrr::map(data, filter_enrollment)) %>%
         unnest(data) %>% 
         dplyr::ungroup() %>%
-        dplyr::select(recordId)
+        dplyr::select(recordId, 
+                      externalId,
+                      healthCode, 
+                      createdOn,
+                      version,
+                      build,
+                      phoneInfo,
+                      medTimepoint)
 }
 
 
@@ -52,17 +54,21 @@ main <- function(){
     
     purrr::map(ref_list, function(activity_ref){
         feature_id <- synapser::synFindEntityId(
-            activity_ref$aggregate_records$output_filename,
-            activity_ref$aggregate_records$parent_id)
+            activity_ref$feature_extraction$output_filename,
+            activity_ref$feature_extraction$parent_id)
         table_id <- activity_ref$table_id
         output_parent_id <- activity_ref$baseline_superusers$parent_id
         output_filename <- activity_ref$baseline_superusers$output_filename
         provenance_name <- "get superusers data"
         provenance_description <- "filter superusers baseline data"
         
+        # get metadata to filter sensor
         metadata <- get_table(
             synapse_tbl = table_id, 
             query_params = "where `substudyMemberships` LIKE '%superusers%'") %>%
+            curate_med_timepoint() %>%
+            curate_app_version() %>%
+            curate_phone_info() %>%
             get_baseline()
         
         # merge feature with cleaned metadata
@@ -71,12 +77,22 @@ main <- function(){
             dplyr::inner_join(
                 metadata, by = c("recordId")) %>%
             dplyr::select(recordId, 
-                          createdOn,
+                          externalId,
                           healthCode, 
+                          createdOn,
+                          version,
+                          build,
+                          phoneInfo,
                           medTimepoint,
-                          diagnosis,
-                          everything(),
-                          -matches("build|phoneInfo|error|version"))
+                          everything())
+        
+        # if window exist, remove NA
+        if("window" %in% names(data)){
+            data <- data %>%
+                tidyr::drop_na(window)
+        }
+        
+        
         # save to synapse
         save_to_synapse(
             data = data,
