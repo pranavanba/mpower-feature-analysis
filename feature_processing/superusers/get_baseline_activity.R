@@ -50,7 +50,7 @@ main <- function(){
     git_url <- get_github_url(
         git_token_path = ref$git_token_path,
         git_repo = ref$repo_endpoint,
-        script_path = "feature_processing/superusers/baseline_activity.R")
+        script_path = "feature_processing/superusers/get_baseline_activity.R")
     
     purrr::map(ref_list, function(activity_ref){
         feature_id <- synapser::synFindEntityId(

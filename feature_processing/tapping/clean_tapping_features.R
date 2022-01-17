@@ -10,79 +10,51 @@ library(data.table)
 library(synapser)
 library(tidyverse)
 library(githubr)
-library(optparse)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
 
 synapser::synLogin()
-
-#' Option parser 
-option_list <- list(
-    make_option(c("-i", "--table_id"), 
-                type = "character", 
-                default = "syn15673381",
-                help = "Synapse ID of mPower Tapping-Activity table entity"),
-    make_option(c("-f", "--feature_id"), 
-                type = "character", 
-                default = "syn26301264",
-                help = "Features ID for tapping"),
-    make_option(c("-o", "--output_filename"), 
-                type = "character", 
-                default = "cleaned_mhealthtools_20secs_tapping_features_v2.tsv",
-                help = "Output file name"),
-    make_option(c("-p", "--parent_id"), 
-                type = "character", 
-                default = "syn26262362",
-                help = "Output parent ID"),
-    make_option(c("-g", "--git_token"), 
-                type = "character", 
-                default = "~/git_token.txt",
-                help = "Path to github token for code provenance"),
-    make_option(c("-n", "--provenance_name"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance parameter for feature extraction"),
-    make_option(c("-d", "--provenance_description"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance description"),
-    make_option(c("-m", "--metadata"), 
-                type = "character", 
-                default = "recordId, createdOn, healthCode, appVersion, phoneInfo, dataGroups, `answers.medicationTiming`",
-                help = "Metadata to keep for cleaned data"),
-    make_option(c("-a", "--aggregate"), 
-                type = "character",
-                default = NULL,
-                help = "Which index to aggregate on")
-)
-
+CONFIG_PATH <- "templates/config.yaml"
+ref <- config::get(file = CONFIG_PATH)
 
 main <- function(){
-    #' get parameter from optparse
-    opt_parser = OptionParser(option_list=option_list)
-    opt = parse_args(opt_parser)
-    
     # Global Variables
-    git_url <- get_github_url(git_token_path = config::get("git")$token_path,
-                              git_repo = config::get("git")$repo,
+    git_url <- get_github_url(git_token_path = ref$git_token_path,
+                              git_repo = ref$repo_endpoint,
                               script_path = "feature_processing/tapping/clean_tapping_features.R")
+    # input reference
+    input_ref <- list(
+        feature_id = synapser::synFindEntityId(
+            ref$tapping$feature_extraction$output_filename,
+            ref$tapping$feature_extraction$parent_id),
+        table_id = ref$tapping$table_id,
+        demo_id = synapser::synFindEntityId(
+            ref$demo$feature_extraction$output_filename,
+            ref$demo$feature_extraction$parent_id),
+        git_url = git_url)
+    
+    
+    # output reference
+    output_ref <- list(
+        clean = ref$tapping$clean,
+        agg_users = ref$tapping$aggregate_users
+    )
     
     # Feature reference
     feature_ref <- list(
-        feature_id = opt$feature_id,
-        tbl_id = opt$table_id,
+        feature_id = input_ref$feature_id,
+        tbl_id = input_ref$table_id,
         demo_id = 'syn26601401',
-        output_parent_id = opt$parent_id,
-        output_filename = opt$output_filename,
+        output_parent_id = input_ref$parent_id,
+        output_filename = input_ref$output_filename,
         git_url = git_url,
-        name = opt$provenance_name,
-        description = opt$provenance_description,
-        metadata = opt$metadata)
+        name = input_ref$provenance_name,
+        description = input_ref$provenance_description,
+        metadata = input_ref$metadata)
     
     # get & clean metadata from synapse table
     metadata <- synTableQuery(glue::glue(
-        "SELECT {metadata} FROM {table_id}",
-        metadata = opt$metadata, 
+        "SELECT * FROM {table_id}",
         table_id = feature_ref$tbl_id))$asDataFrame() %>%
         dplyr::select(-ROW_ID, -ROW_VERSION) %>%
         curate_app_version() %>%
@@ -90,6 +62,7 @@ main <- function(){
         curate_phone_info() %>%
         remove_test_user()
     
+    # get demographics
     demo <- synGet(feature_ref$demo_id)$path %>%
         fread(.) %>%
         dplyr::select(healthCode, age, sex, diagnosis)
@@ -98,8 +71,7 @@ main <- function(){
     data <- synGet(feature_ref$feature_id)$path %>% 
         fread() %>%
         dplyr::inner_join(
-            metadata, by = c("recordId")) %>%
-        dplyr::inner_join(demo, by = c("healthCode")) %>%
+            metadata, by = c("recordId"))  %>%
         dplyr::select(recordId, 
                       createdOn,
                       healthCode, 
@@ -107,33 +79,44 @@ main <- function(){
                       build,
                       medTimepoint,
                       phoneInfo,
-                      age,
-                      sex,
-                      diagnosis,
                       everything())
     
-    # aggregate features if parameter is given
-    if(!is.null(opt$aggregate)){
-        agg_vec <- vectorise_optparse_string(opt$aggregate)
-        data <- data %>%
-            dplyr::group_by(
-                across(all_of(agg_vec))) %>%
-            dplyr::mutate(nrecords = n_distinct(recordId)) %>%
-            dplyr::ungroup() %>%
-            dplyr::group_by(across(c(all_of(agg_vec), nrecords))) %>%
-            dplyr::summarise(across(matches("Inter|Drift|Taps|XY"),
-                                    list("iqr" = IQR, "md" = median),
-                                    na.rm = TRUE))
-    }
+    # aggregate user-level
+    agg_users <- data %>%
+        dplyr::inner_join(demo, by = c("healthCode")) %>%
+        dplyr::group_by(
+            across(all_of("healthCode"))) %>%
+        dplyr::mutate(nrecords = n_distinct(recordId)) %>%
+        dplyr::ungroup() %>%
+        dplyr::group_by(across(c(all_of("healthCode"), nrecords))) %>%
+        dplyr::summarise(across(matches("Inter|Drift|Taps|XY"),
+                                list("iqr" = IQR, "md" = median),
+                                na.rm = TRUE)) %>%
+        dplyr::ungroup() %>%
+        dplyr::inner_join(demo) %>%
+        dplyr::select(healthCode, sex, age, 
+                      diagnosis, nrecords, everything())
     
     # save to synapse
     save_to_synapse(
         data = data,
-        output_filename = feature_ref$output_filename, 
-        parent = feature_ref$output_parent_id,
-        name = feature_ref$name,
-        description = feature_ref$description,
-        used = c(feature_ref$tbl_id, feature_ref$feature_id),
+        output_filename = output_ref$clean$output_filename, 
+        parent = output_ref$clean$parent,
+        name = output_ref$clean$provenance$name,
+        description = output_ref$clean$provenance$description,
+        used = c(input_ref$feature_id, 
+                 input_ref$table_id),
+        executed = git_url)
+    
+    # save to synapse
+    save_to_synapse(
+        data = agg_users,
+        output_filename = output_ref$agg_users$output_filename, 
+        parent = output_ref$agg_users$parent,
+        name = output_ref$agg_users$provenance$name,
+        description = output_ref$agg_users$provenance$description,
+        used = c(input_ref$feature_id, 
+                 input_ref$table_id),
         executed = git_url)
 }
 
