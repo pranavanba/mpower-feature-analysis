@@ -1,0 +1,26 @@
+- name: mPower2.0-Features-Test
+  type: Project
+  acl:
+  - principal_id: 3394042 # Aryton Tediarjo
+    access_type:
+    - READ
+    - DOWNLOAD
+    - UPDATE
+    - CREATE
+    - DELETE
+    - CHANGE_SETTINGS
+    - MODERATE
+    - CHANGE_PERMISSIONS
+  children:
+  - name: Features - Extracted
+    type: Folder
+  - name: Features - Processed
+    type: Folder
+  - name: Analysis - Sandbox
+    type: Folder
+  - name: Analysis - Committed
+    type: Folder
+  - name: Intermediate Files
+    type: Folder
+  - name: Figures
+    type: Folder
