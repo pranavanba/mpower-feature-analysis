@@ -27,12 +27,6 @@ knit2synapse::createAndKnitToFolderEntity(
     folderName = "Tapping"
 )
 
-# append here
-knit2synapse::createAndKnitToFileEntity(
-    file = "analysis/tap_features_diagnostics.Rmd",
-    parentId = "syn26215071", 
-    fileName = "Tapping-Diagnostics"
-)
 
 
 # clean all cache

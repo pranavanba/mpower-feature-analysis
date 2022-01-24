@@ -16,8 +16,8 @@ load(synGet("syn15355694")$path)
 
 # demographics of superPD users
 demo_id <- synapser::synFindEntityId(
-    name = ref$demo$feature_extraction$output_filename,
-    parent = ref$demo$feature_extraction$parent_id
+    name = ref$demo$baseline_superusers$output_filename,
+    parent = ref$demo$baseline_superusers$parent_id
 )
 
 # train-test mapping

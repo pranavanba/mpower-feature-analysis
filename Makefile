@@ -90,3 +90,22 @@ clean_walk_features_v2:
 	-n "run walk feature cleaning" \
 	-f "syn26434900" \
 	-p "syn26341967";
+superusers_tapping:
+	Rscript feature_processing/superusers/baseline_activity.R \
+	-o "mhealthtools_tapping_superusers_baseline.tsv" \
+	-f "syn26344786" \
+	-p "syn26142249" \
+	-i "syn15673381";
+superusers_walking:
+	Rscript feature_processing/superusers/baseline_activity.R \
+	-o "pdkit_walk30secs_superusers_baseline.tsv" \
+	-p "syn26142249" \
+	-f "syn26449887" \
+	-i "syn12514611";
+superusers_tremor:
+	Rscript feature_processing/superusers/baseline_activity.R \
+	-o "mhealthtools_tremor_superusers_baseline.tsv" \
+	-p "syn26142249" \
+	-f "syn26215339" \
+	-i "syn12977322";
+	
