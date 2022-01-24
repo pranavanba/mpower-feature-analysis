@@ -1,6 +1,6 @@
-# Feature Extraction - Tapping
+# Tapping Features Dictionary
 
-This wiki page is used to describe the data extracted for the tapping features information/description/QC processes. It will cover the following:
+This wiki page is used to describe the data extracted
 
 * Wiki Info
 * Tapping Feature Description
