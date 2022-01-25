@@ -82,7 +82,18 @@ v2:
                 query_condition: "LIMIT 50"
                 window_size: 500
         tremor:
-            - mhealthtools:
-                output_filename: "mhealthtools_tremor_features_v2.tsv"
-                name: "extract tremor features using pdkit"
+            - tool: "mhealthtools"
+              output_filename: "mhealthtools_tremor_features_v2.tsv"
+              columns:
+                - "right_motion.json"
+                - "left_motion.json"
+              annotations:
+                pipelineStep: "feature extraction"
+                analysisType: "tremor-v2"
+                task: "tremor"
+              provenance:
+                name: "extract tremor features using mhealthtools"
                 description: "features are extracted as is"
+              params:
+                query_condition: "LIMIT 50"
+                window_size: 500

@@ -163,7 +163,7 @@ main <- function(){
     walk_ref <- config::get("feature_extraction")$walk
     purrr::map(walk_ref, function(ref){
         window_size <- as.integer(ref$params$window_size)
-        gait_feature_objs <- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = window_size)
+        gait_feature_objs <<- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = window_size)
         data <- reticulated_get_table(
             syn, 
             tbl_id = SYN_ID_REF$table,

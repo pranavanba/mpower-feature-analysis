@@ -14,6 +14,7 @@ library(furrr)
 library(optparse)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
+source("utils/reticulated_fetch_id_utils.R")
 
 future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
@@ -21,49 +22,22 @@ syn <- synapseclient$Synapse()
 syn$login()
 syn$table_query_timeout <- 9999999
 
-#' Global Variables of Github Repository and where it is located
-GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
-SCRIPT_PATH <- "feature_extraction/tremor/extract_mhealthtools_tremor_features.R"
-
-#' Option parser 
-option_list <- list(
-    make_option(c("-i", "--table_id"), 
-                type = "character", 
-                default = "syn12977322",
-                help = "Synapse ID of mPower Tremor-Activity table entity"),
-    make_option(c("-f", "--file_column_name"), 
-                type = "character", 
-                default = "right_motion.json,left_motion.json",
-                help = "comma-separated file columns to parse"),
-    make_option(c("-o", "--output_filename"), 
-                type = "character", 
-                default = "mhealthtools_tremor_features_mpower_v2.tsv",
-                help = "Output file name"),
-    make_option(c("-p", "--parent_id"), 
-                type = "character", 
-                default = "syn26215076",
-                help = "Output parent ID"),
-    make_option(c("-c", "--n_cores"), 
-                type = "numeric", 
-                default = NULL,
-                help = "N of cores to use for data processing"),
-    make_option(c("-q", "--query_params"), 
-                type = "character", 
-                default = NULL,
-                help = "Additional table query params"),
-    make_option(c("-g", "--git_token"), 
-                type = "character", 
-                default = "~/git_token.txt",
-                help = "Path to github token for code provenance"),
-    make_option(c("-n", "--provenance_name"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance parameter for feature extraction"),
-    make_option(c("-v", "--mpower_version"), 
-                type = "numeric", 
-                default = 2,
-                help = "Which mPower Version")
-)
+#' Global Variables
+MPOWER_VERSION <- Sys.getenv("R_CONFIG_ACTIVE")
+N_CORES <- config::get("cpu")$n_cores
+SYN_ID_REF <- list(
+    table = config::get("table")$tremor,
+    feature_extraction = get_feature_extraction_ids(syn = syn))
+PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
+TREMOR_TABLE <- SYN_ID_REF$table
+SCRIPT_PATH <- file.path(
+    "feature_extraction", 
+    "tremor",
+    "extract_mhealthtools_tremor_features.R")
+GIT_URL = get_github_url(
+    git_token_path = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_endpoint,
+    script_path = SCRIPT_PATH)
 
 
 #' Function to detect acceleration and 
@@ -190,60 +164,46 @@ featurize_tremor <- function(data, ...){
 
 
 main <- function(){
-    #' get parameter from optparse
-    opt_parser = OptionParser(option_list=option_list)
-    opt = parse_args(opt_parser)
-    opt$file_column_name <- stringr::str_replace_all(
-        opt$file_column_name, " ", "") %>%
-        stringr::str_split(",") %>%
-        purrr::reduce(c)
+    #' check core usage parameter
+    if(is.null(N_CORES)){
+        future::plan(multisession) 
+    }else if(N_CORES > 1){
+        future::plan(strategy = multisession, 
+                     workers = N_CORES) 
+    }else{
+        future::plan(sequential)
+    }
     
     #' conditional on mpower version
-    if(opt$mpower_version == 1){
+    if(MPOWER_VERSION == "v1"){
         file_parser <- parse_sensor_gyro_accel_v1
     }else{
         file_parser <- parse_sensor_gyro_accel_v2
     }
     
-    #' get git url
-    git_url <- get_github_url(
-        git_token_path = opt$git_token, 
-        git_repo = GIT_REPO, 
-        script_path = SCRIPT_PATH)
-    
-    #' check core usage parameter
-    if(is.null(opt$n_cores)){
-        future::plan(multisession) 
-    }else if(opt$n_cores > 1){
-        future::plan(strategy = multisession, workers = opt$n_cores) 
-    }else{
-        future::plan(sequential)
-    }
-    
-    #' - get table from synapse
-    #' - download file handle columns
-    #' - featurize using mhealthtools
-    #' - save to synapse 
-    data <- reticulated_get_table(
-        syn, tbl_id = opt$table_id,
-        file_columns = opt$file_column_name,
-        query_params = opt$query_params) %>%
-        map_feature_extraction(
-            file_parser = parse_sensor_gyro_accel_v2,
-            feature_funs = featurize_tremor,
-            time_filter = c(5,25), 
-            window_length = 256,
-            window_overlap = 0.25,
-            frequency_filter = c(3, 15),
-            detrend = TRUE) %>%
-        reticulated_save_to_synapse(
-            syn, synapseclient, 
-            data = ., 
-            output_filename = opt$output_filename,
-            parent_id = opt$parent_id, 
-            used = opt$table_id,
-            name = opt$provenance_name,
-            executed = git_url)
+    tremor_ref <- config::get("feature_extraction")$tremor
+    purrr::map(tremor_ref, function(ref){
+        tbl <- reticulated_get_table(
+            syn, 
+            tbl_id = SYN_ID_REF$table,
+            file_columns = ref$columns,
+            query_params = ref$params$query_condition)
+        features <- tbl %>%
+            map_feature_extraction(
+                file_parser = file_parser,
+                feature_funs = featurize_tapping,
+                ts_cutoff = ref$params$ts_cutoff) %>%
+            reticulated_save_to_synapse(
+                syn, synapseclient, 
+                data = ., 
+                output_filename = ref$output_filename,
+                parent_id = PARENT_ID,
+                annotations = ref$annotations,
+                used = TREMOR_TABLE,
+                name = ref$provenance$name,
+                description = ref$provenance$description,
+                executed = GIT_URL)
+    })
 }
 
 main()
