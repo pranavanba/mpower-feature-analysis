@@ -1,5 +1,5 @@
 ###########################################################
-#' Utility function to extract tapping 
+#' Utility function to extract tapping (parallel or sequentially)
 #' features across mPowerV1 and mPowerV2 interchangably
 #' 
 #' @author: aryton.tediarjo@sagebase.org
@@ -10,61 +10,34 @@ library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
-library(furrr)
-library(optparse)
+library(plyr)
 library(doMC)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
+source("utils/reticulated_fetch_id_utils.R")
 
 #' Get Synapse Creds
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$login()
 syn$table_query_timeout <- 9999999
 pdkit_rotation_features <- reticulate::import("PDKitRotationFeatures")
-gait_feature_objs <- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = 750L)
 
-#' Global Variables of Github Repository and where it is located
-GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
-SCRIPT_PATH <- "feature_extraction/walk30secs/extract_pdkit_rotation_walk30secs_features.R"
-
-#' Option parser 
-option_list <- list(
-    make_option(c("-i", "--table_id"), 
-                type = "character", 
-                default = "syn12514611",
-                help = "Synapse ID of mPower Walk-Activity table entity"),
-    make_option(c("-f", "--file_column_name"), 
-                type = "character", 
-                default = "walk_motion.json",
-                help = "comma-separated file columns to parse"),
-    make_option(c("-o", "--output_filename"), 
-                type = "character", 
-                default = "mhealthtools_walk30secs_features_mpowerV2.tsv",
-                help = "Output file name"),
-    make_option(c("-p", "--parent_id"), 
-                type = "character", 
-                default = "syn26215077",
-                help = "Output parent ID"),
-    make_option(c("-c", "--n_cores"), 
-                type = "numeric", 
-                default = NULL,
-                help = "N of cores to use for data processing, null for using all"),
-    make_option(c("-q", "--query_params"), 
-                type = "character", 
-                default = NULL,
-                help = "Additional table query params"),
-    make_option(c("-g", "--git_token"), 
-                type = "character", 
-                default = "~/git_token.txt",
-                help = "Path to github token for code provenance"),
-    make_option(c("-n", "--provenance_name"), 
-                type = "character", 
-                default = NULL,
-                help = "Provenance parameter for feature extraction"),
-    make_option(c("-v", "--mpower_version"), 
-                type = "numeric", 
-                default = 2,
-                help = "Which mPower Version"))
+#' Global Variables
+MPOWER_VERSION <- Sys.getenv("R_CONFIG_ACTIVE")
+N_CORES <- config::get("cpu")$n_cores
+SYN_ID_REF <- list(
+    table = config::get("table")$walk,
+    feature_extraction = get_feature_extraction_ids(syn = syn))
+PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
+WALK_TABLE <- SYN_ID_REF$table
+SCRIPT_PATH <- file.path(
+    "feature_extraction", 
+    "walk30secs",
+    "extract_pdkit_rotation_walk30secs_features.R")
+GIT_URL = get_github_url(
+    git_token_path = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_endpoint,
+    script_path = SCRIPT_PATH)
 
 #' Function to format V1 time-series
 format_v1_time_series <- function(accel_filePath, rotation_filePath){
@@ -178,76 +151,63 @@ featurize_gait <- function(data){
 
 
 main <- function(){
-    #' get parameter from optparse
-    opt_parser = OptionParser(option_list=option_list)
-    opt = parse_args(opt_parser)
-    opt$file_column_name <- stringr::str_replace_all(
-        opt$file_column_name, " ", "") %>%
-        stringr::str_split(",") %>%
-        purrr::reduce(c)
-    
-    #' get git url
-    git_url <- get_github_url(
-        git_token_path = opt$git_token, 
-        git_repo = GIT_REPO, 
-        script_path = SCRIPT_PATH)
-    
-    
     #' check core usage parameter
-    if(is.null(opt$n_cores)){
+    if(is.null(N_CORES)){
         registerDoMC(detectCores())
-    }else if(opt$n_cores > 1){
-        registerDoMC(opt$n_cores)
+    }else if(N_CORES > 1){
+        registerDoMC(N_CORES)
     }else{
         registerDoMC(1)
     }
     
-    #' get table from synapse
-    data <- reticulated_get_table(
-        syn, 
-        tbl_id = opt$table_id,
-        file_columns = opt$file_column_name,
-        query_params = opt$query_params) 
-    
-    #' conditional version query for both mpower
-    if(opt$mpower_version == 2){
-        features <- data %>%
-            dplyr::select(recordId, 
-                          fileColumnName, 
-                          filePath) %>%
-            featurize_walk_v2(parallel = T)
-    }else{
-        features <- data  %>%
-            dplyr::select(recordId, 
-                          fileColumnName, 
-                          filePath) %>%
-            dplyr::mutate(
-                sensorType = ifelse(
-                    str_detect(fileColumnName, "^deviceMotion"), 
-                    "deviceMotion", "accel"),
-                activityType = case_when(
-                    str_detect(fileColumnName, "outbound") ~ "outbound",
-                    str_detect(fileColumnName, "return") ~ "return",
-                    TRUE ~ "rest")) %>%
-            tidyr::pivot_wider(names_from = sensorType, 
-                               values_from = filePath, 
-                               id_cols = all_of(c("recordId", "activityType"))) %>%
-            featurize_walk_v1(parallel = T)
-    }
-    
-    #' save to synapse
-    features %>%
-        reticulated_save_to_synapse(
-            syn, synapseclient, 
-            data = ., 
-            output_filename = opt$output_filename,
-            parent_id = opt$parent_id, 
-            annotations = list(
-                pipelineStep = "features-extracted",
-                task = "walk30secs"),
-            used = opt$table_id,
-            name = opt$provenance_name,
-            executed = git_url)
+    walk_ref <- config::get("feature_extraction")$walk
+    purrr::map(walk_ref, function(ref){
+        window_size <- as.integer(ref$params$window_size)
+        gait_feature_objs <- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = window_size)
+        data <- reticulated_get_table(
+            syn, 
+            tbl_id = SYN_ID_REF$table,
+            file_columns = ref$columns,
+            query_params = ref$params$query_condition)
+        if(MPOWER_VERSION == "v2"){
+            features <- data %>%
+                dplyr::select(recordId, 
+                              fileColumnName, 
+                              filePath) %>%
+                featurize_walk_v2(parallel = T)
+        }else{
+            features <- data  %>%
+                dplyr::select(recordId, 
+                              fileColumnName, 
+                              filePath) %>%
+                dplyr::mutate(
+                    sensorType = ifelse(
+                        str_detect(fileColumnName, "^deviceMotion"), 
+                        "deviceMotion", "accel"),
+                    activityType = case_when(
+                        str_detect(fileColumnName, "outbound") ~ "outbound",
+                        str_detect(fileColumnName, "return") ~ "return",
+                        TRUE ~ "rest")) %>%
+                tidyr::pivot_wider(names_from = sensorType, 
+                                   values_from = filePath, 
+                                   id_cols = all_of(c("recordId", "activityType"))) %>%
+                featurize_walk_v1(parallel = T)
+        }
+        features %>%
+            dplyr::rowwise() %>% 
+            dplyr::mutate(window = stringr::str_extract(window, '[0-9]+')) %>%
+            dplyr::ungroup() %>%
+            reticulated_save_to_synapse(
+                syn, synapseclient, 
+                data = ., 
+                output_filename = ref$output_filename,
+                parent_id = PARENT_ID,
+                annotations = ref$annotations,
+                used = TAP_TABLE,
+                name = ref$provenance$name,
+                description = ref$provenance$description,
+                executed = GIT_URL)
+    })
 }
 
 main()
