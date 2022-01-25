@@ -191,7 +191,7 @@ main <- function(){
         features <- tbl %>%
             map_feature_extraction(
                 file_parser = file_parser,
-                feature_funs = featurize_tapping,
+                feature_funs = featurize_tremor,
                 ts_cutoff = ref$params$ts_cutoff) %>%
             reticulated_save_to_synapse(
                 syn, synapseclient, 

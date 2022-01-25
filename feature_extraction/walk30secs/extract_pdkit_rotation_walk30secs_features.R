@@ -203,7 +203,7 @@ main <- function(){
                 output_filename = ref$output_filename,
                 parent_id = PARENT_ID,
                 annotations = ref$annotations,
-                used = TAP_TABLE,
+                used = WALK_TABLE,
                 name = ref$provenance$name,
                 description = ref$provenance$description,
                 executed = GIT_URL)
