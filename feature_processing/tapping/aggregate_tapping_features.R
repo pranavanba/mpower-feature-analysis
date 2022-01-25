@@ -12,10 +12,24 @@ library(tidyverse)
 library(githubr)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
-
+source("utils/fetch_id_utils.R")
 synapser::synLogin()
-CONFIG_PATH <- "templates/config.yaml"
-ref <- config::get(file = CONFIG_PATH)
+
+#' Global Variables
+N_CORES <- config::get("cpu")$n_cores
+SYN_ID_REF <- list(
+    table = config::get("table")$tap,
+    feature_extraction = get_feature_extraction_ids())
+PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
+SCRIPT_PATH <- file.path(
+    "feature_extraction", 
+    "tapping",
+    "extract_mhealthtools_tapping_features.R")
+GIT_URL = get_github_url(
+    git_token_path = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_endpoint,
+    script_path = SCRIPT_PATH)
+
 
 main <- function(){
     # Global Variables

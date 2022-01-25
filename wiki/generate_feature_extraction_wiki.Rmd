@@ -1,0 +1,76 @@
+# Feature Extraction - Wiki Page
+
+This wiki page is used to describe the features extracted for all mpower actvities
+
+* Wiki Info
+* Feature Documentation
+
+```{r, include = FALSE}
+library(synapser)
+library(tidyverse)
+synapser::synLogin()
+```
+
+```{r include=FALSE}
+get_file_view_ref <- function(){
+    template_path <- file.path("../synapseformation/manuscript.yaml")
+    project_id <- synFindEntityId(
+        yaml::read_yaml(template_path)[[1]]$name)
+    file_view_id <- synapser::synFindEntityId(
+        "mPower2.0 - File View", project_id)
+    return(file_view_id)
+}
+
+get_feature_extraction_ids <- function(){
+    file_view_id <- get_file_view_ref()
+    ref_list <- list()
+    data <- synTableQuery(
+        glue::glue("SELECT * FROM {file_view_id}", 
+                   file_view_id = file_view_id))$asDataFrame() %>%
+        tibble::as_tibble()
+    ref_list$parent_id <- data %>%
+        dplyr::filter(
+            type == "folder",
+            name == "Features - Extracted") %>% .$id
+    return(ref_list)
+}
+```
+
+
+```{r, include = FALSE}
+SYN_ID_REF <- list(
+    feature_extraction = get_feature_extraction_ids())
+FOLDER_ID <- SYN_ID_REF$feature_extraction$parent_id
+```
+
+### Wiki Info
+```{r, message = FALSE, echo=FALSE}
+user = synapser::synGetUserProfile()$userName
+createdOn = lubridate::now() %>% strftime()
+
+data <- tibble::tibble(
+    metadata = c("generated_by", "createdOn"),
+    value = c(user, createdOn)
+)
+
+knitr::kable(data, "pipe")
+```
+
+
+### Documentation:
+```{r, echo=FALSE}
+data <- synapser::synGetChildren(
+    FOLDER_ID)$asList() %>%
+    purrr::map_dfr(function(x){
+        id <- x$id
+        name <- x$name
+        provenance <- synGetProvenance(id)
+        description <- provenance$get("description")
+        tibble::tibble(
+            "id" = id,
+            "file_name" = name,
+            "description" = description)
+    })
+
+knitr::kable(data, "pipe")
+```

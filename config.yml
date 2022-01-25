@@ -13,11 +13,16 @@ v2:
         passive: "syn17022539"
     feature_extraction:
         demo:
-            cleaning:
-                output_filename: "demographics_v2.tsv"
+            - output_filename: "curated_demographics_v2.tsv"
+              annotations:
+                pipelineStep: "feature extraction"
+                analysisType: "demographics-v2"
+                task: "demographics"
+              provenance:
+                name: "extract demographics"
+                description: "get average age; most recent gender, phoneInfo, version for duplicate users"
         tap:
-            - tool: "mhealthtools"
-              output_filename: "mhealthtools_tapping_features_v2.tsv"
+            - output_filename: "mhealthtools_tapping_features_v2.tsv"
               columns:
                 - "right_tapping.samples"
                 - "left_tapping.samples"
@@ -25,14 +30,14 @@ v2:
                 pipelineStep: "feature extraction"
                 analysisType: "tapping-v2"
                 task: "tapping"
+                tool: "mhealthtools"
               provenance:
                 name: "extract tapping features using mhealthtools"
                 description: "features are extracted as is"
               params:
                 query_condition: "LIMIT 50"
                 ts_cutoff: 30
-            - tool: "mhealthtools (20 secs cutofF)"
-              output_filename: "mhealthtools_20_secs_tapping_features_v2.tsv"
+            - output_filename: "mhealthtools_20_secs_tapping_features_v2.tsv"
               columns:
                 - "right_tapping.samples"
                 - "left_tapping.samples"
@@ -40,17 +45,16 @@ v2:
                 pipelineStep: "feature extraction"
                 analysisType: "tapping-v2"
                 task: "tapping"
-                filter: "20 seconds cutoff" 
+                filter: "20 seconds cutoff"
+                tool: "mhealthtools"
               provenance:
                 name: "extract tapping features with 20 seconds cutoff"
                 description: "adjusting to 20 seconds to align with V1"
               params:
                 query_condition: "LIMIT 50"
                 ts_cutoff: 20.5
-            
         walk:
-            - tool: "pdkit (7.5 seconds)"
-              output_filename: "pdkit_rotation_7secs_window_walking_features_v2.tsv"
+            - output_filename: "pdkit_rotation_7secs_window_walking_features_v2.tsv"
               columns:
                 - "balance_motion.json"
                 - "walk_motion.json"
@@ -59,8 +63,9 @@ v2:
                 analysisType: "walking30secs-v2"
                 task: "walking"
                 filter: "7.5-seconds window"
+                tool: "pdkit-rotation"
               provenance:
-                name: "extract walking features"
+                name: "extract walking features using pdkit-rotation"
                 description: "extract using 7.5 seconds window"
               params:
                 query_condition: "LIMIT 50"
@@ -75,15 +80,15 @@ v2:
                 analysisType: "walking30secs-v2"
                 task: "walking"
                 filter: "5-seconds window"
+                tool: "pdkit-rotation"
               provenance:
-                name: "extract walking features"
+                name: "extract walking features using pdkit-rotation"
                 description: "extract using 5 seconds window"
               params:
                 query_condition: "LIMIT 50"
                 window_size: 500
         tremor:
-            - tool: "mhealthtools"
-              output_filename: "mhealthtools_tremor_features_v2.tsv"
+            - output_filename: "mhealthtools_tremor_features_v2.tsv"
               columns:
                 - "right_motion.json"
                 - "left_motion.json"
@@ -91,11 +96,58 @@ v2:
                 pipelineStep: "feature extraction"
                 analysisType: "tremor-v2"
                 task: "tremor"
+                tool: "mhealthtools"
               provenance:
                 name: "extract tremor features using mhealthtools"
                 description: "features are extracted as is"
               params:
                 query_condition: "LIMIT 50"
                 window_size: 500
-    feature_engineering:
+    feature_processing:
+        tap:
+            - output_filename: "user_agg_mhealthtools_tapping_features_v2.tsv"
+              annotations:
+                pipelineStep: "feature processing"
+                analysisType: "tapping-v2"
+                task: "tapping"
+                tool: "mhealthtools"
+                processingType: "aggregation"
+              provenance:
+                name: "aggregate tapping features"
+                description: "aggrete user-level"
+            - output_filename: "user_agg_mhealthtools_20_secs_tapping_features_v2.tsv"
+              annotations:
+                pipelineStep: "feature processing"
+                analysisType: "tapping-v2"
+                task: "tapping"
+                tool: "mhealthtools"
+                processingType: "aggregation"
+                filter: "20 seconds cutoff"
+              provenance:
+                name: "aggregate tapping features"
+                description: "aggrete user-level"
+        walk:
+            - output_filename: "user_agg_pdkit_rotation_7secs_window_walking_features_v2.tsv"
+              annotations:
+                pipelineStep: "feature processing"
+                analysisType: "walk30secs-v2"
+                task: "walking"
+                tool: "pdkit-rotation"
+                processingType: "aggregation"
+                filter: "7.5-seconds window"
+              provenance:
+                name: "aggregate walking (7-secs window) features"
+                description: "aggregate user-level"
+            - output_filename: "user_agg_pdkit_rotation_5secs_window_walking_features_v2.tsv"
+              annotations:
+                pipelineStep: "feature processing"
+                analysisType: "walk30secs-v2"
+                task: "walking"
+                tool: "pdkit-rotation"
+                processingType: "aggregation"
+                filter: "5-seconds window"
+              provenance:
+                name: "aggregate walking (7-secs window) features"
+                description: "aggregate user-level"
+              
     super_pd: 

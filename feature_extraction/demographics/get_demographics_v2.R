@@ -27,15 +27,12 @@ SCRIPT_PATH <- file.path("feature_extraction",
                          "demographics",
                          "get_demographics_v2.R")
 
+demo_ref <- config::get("feature_extraction")$demo[[1]]
 OUTPUT_REF <- list(
-    filename = config::get("feature_extraction") %>% 
-        .$demo %>%
-        .$cleaning %>% 
-        .$output_filename,
+    filename = demo_ref$output_filename,
     parent = SYN_ID_REF$feature_extraction$parent_id,
-    annotations = list(
-        pipelineStep = "feature extraction",
-        analysisType = "demographics-v2"),
+    annotations = demo_ref$annotations,
+    provenance = demo_ref$provenance,
     git_url = get_github_url(
         git_token_path = config::get("git")$token_path,
         git_repo = config::get("git")$repo_endpoint,
@@ -93,7 +90,9 @@ main <- function(){
                         parent = OUTPUT_REF$parent, 
                         annotations = OUTPUT_REF$annotations,
                         used = SYN_ID_REF$table,
-                        executed = OUTPUT_REF$git_url)
+                        executed = OUTPUT_REF$git_url,
+                        name = OUTPUT_REF$provenance$name,
+                        description = OUTPUT_REF$provenance$description)
 }
 
 main()
