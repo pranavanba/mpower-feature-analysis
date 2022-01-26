@@ -34,6 +34,12 @@ get_feature_extraction_ids <- function(){
             pipelineStep == "feature extraction",
             task == "tapping",
             analysisType == "tapping-v2") %>% .$id
+    ref_list$tremor <- data %>%
+        dplyr::filter(
+            is.na(filter),
+            pipelineStep == "feature extraction",
+            task == "tremor",
+            analysisType == "tremor-v2") %>% .$id
     return(ref_list)
 }
 

@@ -11,19 +11,29 @@ library(data.table)
 library(furrr)
 library(future)
 source("utils/helper_utils.R")
+source("utils/reticulated_fetch_id_utils.R")
 
+#' login to synapse using reticulate
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$Synapse()
 syn$login()
 syn$table_query_timeout <- 9999999
 
-GIT_REPO <- "arytontediarjo/mpower-feature-analysis"
-GIT_TOKEN_PATH <- "~/git_token.txt"
-SCRIPT_PATH <- file.path("feature_processing", 
-                         "tremor", 
-                         "clean_tremor_features.R")
-setGithubToken(readLines(GIT_TOKEN_PATH))
-GIT_URL <- githubr::getPermlink(GIT_REPO, repositoryPath = SCRIPT_PATH)
+#' Global Variables
+N_CORES <- config::get("cpu")$n_cores
+SYN_ID_REF <- list(
+    table = config::get("table")$tremor,
+    feature_extraction = get_feature_extraction_ids(),
+    feature_processed = get_feature_processed_ids())
+PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
+SCRIPT_PATH <- file.path(
+    "feature_processing", 
+    "tremor",
+    "aggregate_tremor_features.R")
+GIT_URL = get_github_url(
+    git_token_path = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_endpoint,
+    script_path = SCRIPT_PATH)
 
 ####################################
 # instantiate named list variable #

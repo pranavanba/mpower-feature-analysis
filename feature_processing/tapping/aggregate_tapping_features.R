@@ -99,7 +99,7 @@ main <- function(){
         
         # save to synapse
         save_to_synapse(
-            data = data,
+            data = agg_users,
             output_filename = ref$output_filename, 
             parent = SYN_ID_REF$feature_processed$parent_id,
             annotations = ref$annotations,
