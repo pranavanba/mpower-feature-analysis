@@ -22,7 +22,8 @@ RUN python3 -m venv ~/env\
     && pip install psutil\
     && pip install pyyaml\
     && pip install synapseclient\
-    && pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
+    && pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git\
+    && pip install numpy==1.21
     
 ## get packages from lockfile
 ENV RENV_VERSION 0.13.2
