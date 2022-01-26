@@ -10,13 +10,12 @@ library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
-library(furrr)
-library(optparse)
+library(plyr)
+library(doMC)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
 source("utils/reticulated_fetch_id_utils.R")
 
-future::plan(multisession)
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$Synapse()
 syn$login()
@@ -163,36 +162,57 @@ featurize_tremor <- function(data, ...){
 }
 
 
+#' Entry-point function to parse each filepath of each recordIds
+#' walk data and featurize each record using featurize walk data function
+#' @params data: dataframe containing filepaths
+#' @returns featurized walk data for each participant 
+extract_tremor_features <- function(data, parallel=FALSE){
+    features <- plyr::ddply(
+        .data = data,
+        .variables = all_of(c("recordId", "fileColumnName")),
+        .parallel = parallel,
+        .fun = function(row){
+            tryCatch({ # capture common errors
+                ts <- file_parser(row$filePath)
+                if(nrow(ts) == 0){
+                    stop("ERROR: sensor timeseries is empty")
+                }else{
+                    featurize_tremor(ts)
+                }
+            }, error = function(err){ # capture all other error
+                error_msg <- stringr::str_squish(
+                    stringr::str_replace_all(geterrmessage(), "\n", ""))
+                return(tibble::tibble(error = error_msg))})})
+    return(features)
+}
+
+
 main <- function(){
     #' check core usage parameter
     if(is.null(N_CORES)){
-        future::plan(multisession) 
+        registerDoMC(detectCores())
     }else if(N_CORES > 1){
-        future::plan(strategy = multisession, 
-                     workers = N_CORES) 
+        registerDoMC(N_CORES)
     }else{
-        future::plan(sequential)
+        registerDoMC(1)
     }
     
     #' conditional on mpower version
     if(MPOWER_VERSION == "v1"){
-        file_parser <- parse_sensor_gyro_accel_v1
+        file_parser <<- parse_sensor_gyro_accel_v1
     }else{
-        file_parser <- parse_sensor_gyro_accel_v2
+        file_parser <<- parse_sensor_gyro_accel_v2
     }
     
-    tremor_ref <- config::get("feature_extraction")$tremor
-    purrr::map(tremor_ref, function(ref){
+    refs <- config::get("feature_extraction")$tremor
+    purrr::map(refs, function(ref){
         tbl <- reticulated_get_table(
             syn, 
             tbl_id = SYN_ID_REF$table,
             file_columns = ref$columns,
             query_params = ref$params$query_condition)
         features <- tbl %>%
-            map_feature_extraction(
-                file_parser = file_parser,
-                feature_funs = featurize_tremor,
-                ts_cutoff = ref$params$ts_cutoff) %>%
+            extract_tremor_features(parallel = TRUE) %>%
             reticulated_save_to_synapse(
                 syn, synapseclient, 
                 data = ., 

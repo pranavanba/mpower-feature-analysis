@@ -11,13 +11,13 @@ map_feature_extraction <- function(data,
     features <- furrr::future_pmap_dfr(
         list(recordId = data$recordId,
              fileColumnName = data$fileColumnName,
-             filePath = data$filePath), 
+             filePath = data$filePath),
         file_parser = file_parser,
         feature_funs = feature_funs,
         function(recordId,
-                 fileColumnName, 
-                 filePath, 
-                 file_parser, 
+                 fileColumnName,
+                 filePath,
+                 file_parser,
                  feature_funs){
             file_parser <- partial(file_parser)
             feature_funs <- partial(feature_funs, ...)
@@ -27,12 +27,12 @@ map_feature_extraction <- function(data,
                 dplyr::mutate(
                     recordId = recordId,
                     fileColumnName = fileColumnName) %>%
-                dplyr::select(recordId, 
-                              fileColumnName, 
+                dplyr::select(recordId,
+                              fileColumnName,
                               everything())})
     data %>%
         dplyr::select(
-            all_of(c("recordId", 
+            all_of(c("recordId",
                      "fileColumnName"))) %>%
         dplyr::left_join(
             features, by = c("recordId", "fileColumnName"))

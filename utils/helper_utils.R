@@ -138,4 +138,25 @@ save_to_synapse <- function(data,
   unlink(file$path)
 }
 
+get_pipeline_annotation_mapper <- function(refs){
+  refs %>% 
+    purrr::list_modify("parent_id" = NULL) %>% 
+    purrr::map_dfr(function(x){
+      entity <- synGet(x)
+      id <- entity$properties$id
+      annotations <- synGetAnnotations(id) %>% 
+        unlist(recursive = F)
+      analysisType = annotations$analysisType
+      filter = ifelse(!is.null(annotations$filter), 
+                      annotations$filter, NA_character_)
+      tool = ifelse(!is.null(annotations$tool), 
+                    annotations$tool,NA_character_)
+      tibble::tibble(
+        id = id,
+        analysisType = analysisType,
+        filter = filter,
+        tool = tool)
+    })
+}
+
 

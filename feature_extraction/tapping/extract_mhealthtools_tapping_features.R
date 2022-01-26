@@ -10,7 +10,8 @@ library(githubr)
 library(jsonlite)
 library(mhealthtools)
 library(reticulate)
-library(furrr)
+library(plyr)
+library(doMC)
 library(optparse)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
@@ -97,15 +98,38 @@ parse_tapping_v2_samples <- function(file_path){
     return(data)
 }
 
+#' Entry-point function to parse each filepath of each recordIds
+#' walk data and featurize each record using featurize walk data function
+#' @params data: dataframe containing filepaths
+#' @returns featurized walk data for each participant 
+extract_tapping_features <- function(data, parallel=FALSE){
+    features <- plyr::ddply(
+        .data = data,
+        .variables = all_of(c("recordId", "fileColumnName")),
+        .parallel = parallel,
+        .fun = function(row){
+            tryCatch({ # capture common errors
+                ts <- file_parser(row$filePath) %>%
+                    dplyr::filter(t < ts_cutoff)
+                if(nrow(ts) == 0){
+                    stop("ERROR: sensor timeseries is empty")
+                }else{
+                    featurize_tapping(ts)
+                }
+            }, error = function(err){ # capture all other error
+                error_msg <- stringr::str_squish(
+                    stringr::str_replace_all(geterrmessage(), "\n", ""))
+                return(tibble::tibble(error = error_msg))})})
+    return(features)
+}
+
 #' Featurize tapping samples by mapping
 #' each record and file columns using mhealthtools
 #' 
 #' @param data
 #' @return dataframe/tibble tapping features
-featurize_tapping <- function(data, ts_cutoff, ...){
+featurize_tapping <- function(data, ...){
     tryCatch({
-        data <- data %>%
-            dplyr::filter(t < ts_cutoff)
         data %>%
             as.data.frame() %>%
             mhealthtools::get_tapping_features(...) %>% 
@@ -121,39 +145,33 @@ featurize_tapping <- function(data, ts_cutoff, ...){
         return(tibble::tibble(error = error_msg))})
 }
 
-
-
 main <-  function(){
     #' check core usage parameter
     if(is.null(N_CORES)){
-        future::plan(multisession) 
+        registerDoMC(detectCores())
     }else if(N_CORES > 1){
-        future::plan(strategy = multisession, 
-                     workers = N_CORES) 
+        registerDoMC(N_CORES)
     }else{
-        future::plan(sequential)
+        registerDoMC(1)
     }
     
     
     #' conditional on mpower version
     if(Sys.getenv("R_CONFIG_ACTIVE") == "v1"){
-        file_parser <- parse_tapping_v1_samples
+        file_parser <<- parse_tapping_v1_samples
     }else{
-        file_parser <- parse_tapping_v2_samples
+        file_parser <<- parse_tapping_v2_samples
     }
-    
-    tap_ref <- config::get("feature_extraction")$tap
-    purrr::map(tap_ref, function(ref){
+    refs <- config::get("feature_extraction")$tap
+    purrr::map(refs, function(ref){
+        ts_cutoff <<- ref$params$ts_cutoff
         tbl <- reticulated_get_table(
             syn, 
             tbl_id = SYN_ID_REF$table,
             file_columns = ref$columns,
             query_params = ref$params$query_condition)
         features <- tbl %>%
-            map_feature_extraction(
-                file_parser = file_parser,
-                feature_funs = featurize_tapping,
-                ts_cutoff = ref$params$ts_cutoff) %>%
+            extract_tapping_features(parallel = T) %>%
             reticulated_save_to_synapse(
                 syn, synapseclient, 
                 data = ., 

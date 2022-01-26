@@ -18,14 +18,20 @@ get_feature_extraction_ids <- function(){
         dplyr::filter(
             type == "folder",
             name == "Features - Extracted") %>% .$id
+    ref_list$demo <- data %>%
+        dplyr::filter(
+            analysisType == "demographics-v2",
+            pipelineStep == "feature extraction") %>% .$id
     ref_list$tap_20_secs <- data %>%
         dplyr::filter(
+            pipelineStep == "feature extraction",
             filter == "20 seconds cutoff",
             task == "tapping",
             analysisType == "tapping-v2") %>% .$id
     ref_list$tap <- data %>%
         dplyr::filter(
             is.na(filter),
+            pipelineStep == "feature extraction",
             task == "tapping",
             analysisType == "tapping-v2") %>% .$id
     return(ref_list)

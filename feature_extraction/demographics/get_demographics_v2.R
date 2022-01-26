@@ -6,7 +6,6 @@
 #' 
 #' @author aryton.tediarjo@sagebase.org
 #############################################
-library(reticulate)
 library(tidyverse)
 library(githubr)
 library(synapser)

@@ -84,7 +84,7 @@ search_gyro_accel <- function(filePath){
 #' walk data and featurize each record using featurize walk data function
 #' @params data: dataframe containing filepaths
 #' @returns featurized walk data for each participant 
-featurize_walk_v1 <- function(data, parallel=FALSE){
+featurize_walk <- function(data, parallel=FALSE){
     features <- plyr::ddply(
         .data = data,
         .variables = all_of(c("recordId", "activityType")),
