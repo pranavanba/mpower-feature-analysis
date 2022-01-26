@@ -1,5 +1,7 @@
 ###########################################################
-#' Script to clean walk features
+#' Script to clean features across mPowerV1 and mPowerV2
+#' Optional: Aggregate features based on 
+#' which index of the tapping features
 #' 
 #' @author: aryton.tediarjo@sagebase.org
 ############################################################
@@ -8,15 +10,27 @@ library(data.table)
 library(synapser)
 library(tidyverse)
 library(githubr)
-library(optparse)
-source("utils/helper_utils.R")
 source("utils/curation_utils.R")
+source("utils/helper_utils.R")
+source("utils/fetch_id_utils.R")
 synapser::synLogin()
 
-#' login
-synapser::synLogin()
-CONFIG_PATH <- "templates/config.yaml"
-ref <- config::get(file = CONFIG_PATH)
+#' Global Variables
+N_CORES <- config::get("cpu")$n_cores
+SYN_ID_REF <- list(
+    table = config::get("table")$tap,
+    feature_extraction = get_feature_extraction_ids(),
+    feature_processed = get_feature_processed_ids())
+PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
+SCRIPT_PATH <- file.path(
+    "feature_processing", 
+    "tapping",
+    "aggregate_tapping_features.R")
+GIT_URL = get_github_url(
+    git_token_path = config::get("git")$token_path,
+    git_repo = config::get("git")$repo_endpoint,
+    script_path = SCRIPT_PATH)
+
 
 aggregate_walk_features <- function(data, agg_vec){
    data %>%
