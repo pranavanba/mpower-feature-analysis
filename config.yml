@@ -3,7 +3,7 @@ default:
         repo_endpoint: "arytontediarjo/mpower-feature-analysis"
         token_path: "~/git_token.txt"
     cpu:
-        n_cores: 4
+        n_cores: 16
 v2:
     table:
         demo: "syn15673379"
