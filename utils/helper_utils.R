@@ -138,7 +138,7 @@ save_to_synapse <- function(data,
   unlink(file$path)
 }
 
-get_pipeline_annotation_mapper <- function(refs){
+get_annotation_mapper <- function(refs){
   refs %>% 
     purrr::list_modify("parent_id" = NULL) %>% 
     purrr::map_dfr(function(x){
@@ -151,6 +151,29 @@ get_pipeline_annotation_mapper <- function(refs){
                       annotations$filter, NA_character_)
       tool = ifelse(!is.null(annotations$tool), 
                     annotations$tool,NA_character_)
+      tibble::tibble(
+        id = id,
+        analysisType = analysisType,
+        filter = filter,
+        tool = tool)
+    })
+}
+
+
+reticulated_get_annotation_mapper <- function(refs){
+  refs %>% 
+    purrr::list_modify("parent_id" = NULL) %>% 
+    purrr::map_dfr(function(x){
+      entity <- syn$get(x)
+      id <- entity$properties$id
+      annotations <- syn$getAnnotations(id) %>% 
+        unlist(recursive = F)
+      analysisType = tryCatch({annotations$analysisType}, 
+                              error = function(e){NA_character_})
+      filter = tryCatch({annotations$filter}, 
+                        error = function(e){NA_character_})
+      tool = tryCatch({annotations$tool}, 
+                      error = function(e){NA_character_})
       tibble::tibble(
         id = id,
         analysisType = analysisType,

@@ -98,7 +98,7 @@ v2:
                 tool: "mhealthtools"
               provenance:
                 name: "extract tremor features using mhealthtools"
-                description: "features are extracted as is"
+                description: "features are extracted using 2.5 seconds window"
               params:
                 query_condition: NULL
                 window_size: 500
@@ -164,4 +164,15 @@ v2:
               provenance:
                 name: "aggregate walking (7-secs window) features"
                 description: "aggregate user-level"
+        tremor:
+            - output_filename: "user_agg_mhealthtools_tremor_features_v2.tsv"
+              annotations:
+                pipelineStep: "feature processing"
+                analysisType: "tremor-v2"
+                task: "tremor"
+                tool: "mhealthtools"
+                processingType: "aggregation"
+              provenance:
+                name: "reduce and aggregate tremor features"
+                description: "reduce features based on genetic algorithm, aggregate user-level"
     super_pd: 

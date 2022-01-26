@@ -11,7 +11,7 @@ library(data.table)
 library(furrr)
 library(future)
 source("utils/helper_utils.R")
-source("utils/reticulated_fetch_id_utils.R")
+source("utils/fetch_id_utils.R")
 
 #' login to synapse using reticulate
 synapseclient <- reticulate::import("synapseclient")
@@ -23,8 +23,8 @@ syn$table_query_timeout <- 9999999
 N_CORES <- config::get("cpu")$n_cores
 SYN_ID_REF <- list(
     table = config::get("table")$tremor,
-    feature_extraction = get_feature_extraction_ids(),
-    feature_processed = get_feature_processed_ids())
+    feature_extraction = get_feature_extraction_ids(syn),
+    feature_processed = get_feature_processed_ids(syn))
 PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
 SCRIPT_PATH <- file.path(
     "feature_processing", 
@@ -34,6 +34,7 @@ GIT_URL = get_github_url(
     git_token_path = config::get("git")$token_path,
     git_repo = config::get("git")$repo_endpoint,
     script_path = SCRIPT_PATH)
+BEST_FEATURES_ID <- "syn17088603"
 
 ####################################
 # instantiate named list variable #
@@ -54,18 +55,6 @@ KINETIC_MAPPING <- list(
         "velocity" = "uav",
         "acf" = "uavcf"
     ))
-
-# get mapping for outputs
-OUTPUT_REF <- list(
-    agg_record = "cleaned_mhealthtools_tremor_features_v2.tsv",
-    feat_id = "syn26215339",
-    best_features_id = "syn17088603",
-    tbl_id = "syn12977322",
-    demo_id = "syn26601401",
-    parent_id = "syn26341966",
-    funs = "summarize_tremor"
-)
-
 
 #' function to get top n features
 top_n_features <- function(syn, best_features_id, n = 30){
@@ -161,55 +150,71 @@ widen_features <- function(feature){
             values_from = matches(".md$|.iqr$"))
 }
 
+get_metadata <- function(tbl_id, syn){
+    # get & clean metadata from synapse table
+    metadata <- syn$tableQuery(glue::glue(
+        "SELECT * FROM {tbl_id}"))$asDataFrame() %>%
+        curate_app_version() %>%
+        curate_med_timepoint() %>%
+        curate_phone_info() %>%
+        remove_test_user()
+}
+
 main <- function(){
-    # get features
-    feature <- OUTPUT_REF$feat_id %>% 
-        syn$get(.) %>% 
-        .$path %>% 
-        fread() %>%
-        dplyr::filter(is.na(error))
-    
-    # get demographics
-    demo <- OUTPUT_REF$demo_id %>% 
-        syn$get() %>% 
-        .$path %>% 
-        fread()
-    
-    # get identifiers
-    identifier <- get_table(
-        syn = syn,
-        tbl_id = OUTPUT_REF$tbl_id)
+    refs <- config::get("feature_processing")$tremor
+    annotations_map <- SYN_ID_REF$feature_extraction %>% 
+        reticulated_get_annotation_mapper()
+    metadata <- get_metadata(SYN_ID_REF$table, syn = syn)
+    demo <- syn$get(SYN_ID_REF$feature_extraction$demo)$path %>%
+        fread(.) %>%
+        dplyr::select(healthCode, age, sex, diagnosis)
+    purrr::map(refs, function(ref){
+        if(is.null(ref$annotations$filter)){
+            feature_id <- annotations_map %>%
+                dplyr::filter(
+                    is.na(filter),
+                    tool == ref$annotations$tool,
+                    analysisType == ref$annotations$analysisType) %>%
+                .$id
+        }else{
+            feature_id <- annotations_map %>%
+                dplyr::filter(
+                    filter == ref$annotations$filter,
+                    tool == ref$annotations$tool,
+                    analysisType == ref$annotations$analysisType) %>%
+                .$id
+        }
+        # get features aggregated with recordId
+        syn$get(feature_id)$path %>%
+            fread() %>%
+            dplyr::inner_join(metadata, by = c("recordId")) %>%
+            map_kinetic_features()  %>%
+            group_features(group = c("healthCode")) %>%
+            widen_features() %>%
+            dplyr::inner_join(demo, by = c("healthCode")) %>% 
+            dplyr::select(healthCode, 
+                          diagnosis, 
+                          age,
+                          sex, 
+                          matches(
+                              top_n_features(
+                                  syn = syn,
+                                  best_features_id = BEST_FEATURES_ID))) %>%
+            # save data via reticulated synapse
+            reticulated_save_to_synapse(
+                data = .,
+                syn = syn, 
+                synapseclient = synapseclient,
+                output_filename = ref$output_filename, 
+                parent = SYN_ID_REF$feature_processed$parent_id,
+                annotations = ref$annotations,
+                name = ref$provenance$name,
+                description = ref$provenance$description,
+                used = c(SYN_ID_REF$table, feature_id, BEST_FEATURES_ID),
+                executed = GIT_URL
+            )
+    })
         
-    # get features aggregated with recordId
-   feature %>%
-       map_kinetic_features()  %>%
-       group_features(group = c("recordId")) %>%
-       widen_features() %>%
-       dplyr::inner_join(identifier, by = c("recordId")) %>%
-       dplyr::inner_join(demo, by = c("healthCode")) %>% 
-       dplyr::select(recordId,
-                     createdOn,
-                     healthCode, 
-                     diagnosis, 
-                     age,
-                     sex, 
-                     fileColumnName,
-                     medTimepoint,
-                     matches(
-                         top_n_features(
-                            syn = syn,
-                            best_features_id = OUTPUT_REF$best_features_id))) %>%
-       # save data via reticulated synapse
-       reticulated_save_to_synapse(
-        syn = syn,
-        synapseclient = synapseclient,
-        data = .,
-        output_filename = OUTPUT_REF$agg_record,
-        parent= OUTPUT_REF$parent_id,
-        used = c(OUTPUT_REF$feat_id, 
-                 OUTPUT_REF$best_features_id),
-        executed = GIT_URL, 
-        name = "aggregate tremor by records")
 }
 
 main()
