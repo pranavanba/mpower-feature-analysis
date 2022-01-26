@@ -70,8 +70,7 @@ v2:
               params:
                 query_condition: "LIMIT 50"
                 window_size: 750 # sampling rate 100
-            - tool: "pdkit (5 seconds)"
-              output_filename: "pdkit_rotation_5secs_window_walking_features_v2.tsv"
+            - output_filename: "pdkit_rotation_5secs_window_walking_features_v2.tsv"
               columns:
                 - "balance_motion.json"
                 - "walk_motion.json"
@@ -103,6 +102,22 @@ v2:
               params:
                 query_condition: "LIMIT 50"
                 window_size: 500
+        passive:
+            - output_filename: "pdkit_rotation_7secs_window_passive_gait_features.tsv"
+              columns:
+                - "walk_motion.json"
+              annotations:
+                pipelineStep: "feature extraction"
+                analysisType: "passive-gait"
+                task: "passive"
+                filter: "7.5-seconds window"
+                tool: "pdkit-rotation"
+              provenance:
+                name: "extract passive-walking features using pdkit-rotation"
+                description: "extract using 7.5 seconds window"
+              params:
+                query_condition: "LIMIT 50"
+                window_size: 750 # sampling rate 100
     feature_processing:
         tap:
             - output_filename: "user_agg_mhealthtools_tapping_features_v2.tsv"

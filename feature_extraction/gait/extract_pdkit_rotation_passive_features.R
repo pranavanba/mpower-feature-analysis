@@ -26,14 +26,14 @@ pdkit_rotation_features <- reticulate::import("PDKitRotationFeatures")
 MPOWER_VERSION <- Sys.getenv("R_CONFIG_ACTIVE")
 N_CORES <- config::get("cpu")$n_cores
 SYN_ID_REF <- list(
-    table = config::get("table")$walk,
+    table = config::get("table")$passive,
     feature_extraction = get_feature_extraction_ids(syn = syn))
 PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
 WALK_TABLE <- SYN_ID_REF$table
 SCRIPT_PATH <- file.path(
     "feature_extraction", 
-    "walk30secs",
-    "extract_pdkit_rotation_walk30secs_features.R")
+    "gait",
+    "extract_pdkit_rotation_passive_features.R")
 GIT_URL = get_github_url(
     git_token_path = config::get("git")$token_path,
     git_repo = config::get("git")$repo_endpoint,
@@ -160,8 +160,8 @@ main <- function(){
         registerDoMC(1)
     }
     
-    walk_ref <- config::get("feature_extraction")$walk
-    purrr::map(walk_ref, function(ref){
+    refs <- config::get("feature_extraction")$passive
+    purrr::map(refs, function(ref){
         window_size <- as.integer(ref$params$window_size)
         gait_feature_objs <<- pdkit_rotation_features$gait_module$GaitFeatures(sensor_window_size = window_size)
         data <- reticulated_get_table(
@@ -211,9 +211,3 @@ main <- function(){
 }
 
 main()
-
-
-
-
-
-
