@@ -1,3 +1,18 @@
+###############################################################
+#' Collection of script to streamline
+#' pipeline workflow
+#' 
+#' Note: using reticulate function
+#' to adjust with reticulated synapse 
+#' (less error in parallelization and python package usage)
+#' 
+#' @author: aryton.tediarjo@sagebase.org
+####################################################################
+
+#' Function (reticulated) to get synapse table in reticulate
+#' into tidy-format (pivot based on filecolumns if exist)
+#' @param synapse_tbl tbl id in synapse
+#' @param file_columns file_columns to download
 reticulated_get_table <- function(syn, 
                                   tbl_id, 
                                   file_columns = NULL,
@@ -45,6 +60,13 @@ reticulated_get_table <- function(syn,
   return(result)
 }
 
+#' Function (reticulated) to save to synapse
+#' 
+#' @param data dataframe
+#' @param output_filename desired output filename
+#' @param parent parent synapse id
+#' @param annotations synapse annotations (list)
+#' @param ... addditional params for provenance
 reticulated_save_to_synapse <- function(syn,
                             synapseclient,
                             data, 
@@ -111,7 +133,14 @@ get_table <- function(synapse_tbl,
   return(result)
 }
 
-
+#' Utility function to get github url
+#' 
+#' @param git_token_path path to git token
+#' @param git_repo github repo
+#' @param script_path path to script
+#' @param ... additional param for githubr
+#' 
+#' @return git url
 get_github_url <- function(git_token_path, 
                            git_repo,
                            script_path,
@@ -123,6 +152,13 @@ get_github_url <- function(git_token_path,
     ...)
 }
 
+#' Function to save to synapse
+#' 
+#' @param data dataframe
+#' @param output_filename desired output filename
+#' @param parent parent synapse id
+#' @param annotations synapse annotations (list)
+#' @param ... addditional params for provenance
 save_to_synapse <- function(data, 
                             output_filename, 
                             parent,
@@ -138,6 +174,10 @@ save_to_synapse <- function(data,
   unlink(file$path)
 }
 
+#' Function to get annotation map of features
+#' 
+#' @param refs takes in reference of synapseIDS
+#' @return tibble of each synapseID and key annotationss
 get_annotation_mapper <- function(refs){
   refs %>% 
     purrr::list_modify("parent_id" = NULL) %>% 
@@ -159,7 +199,10 @@ get_annotation_mapper <- function(refs){
     })
 }
 
-
+#' Function (reticulated) to get annotation map of features
+#' 
+#' @param refs takes in reference of synapseIDS
+#' @return tibble of each synapseID and key annotationss
 reticulated_get_annotation_mapper <- function(refs){
   refs %>% 
     purrr::list_modify("parent_id" = NULL) %>% 
@@ -180,6 +223,46 @@ reticulated_get_annotation_mapper <- function(refs){
         filter = filter,
         tool = tool)
     })
+}
+
+#' Utility feature extraction function to
+#' map based on file column name and recordId
+#' (inherited from get_table())
+#' 
+#' @param data
+#' @return dataframe/tibble tapping features
+map_feature_extraction <- function(data, 
+                                   file_parser, 
+                                   feature_funs,
+                                   ...){
+  features <- furrr::future_pmap_dfr(
+    list(recordId = data$recordId,
+         fileColumnName = data$fileColumnName,
+         filePath = data$filePath),
+    file_parser = file_parser,
+    feature_funs = feature_funs,
+    function(recordId,
+             fileColumnName,
+             filePath,
+             file_parser,
+             feature_funs){
+      file_parser <- partial(file_parser)
+      feature_funs <- partial(feature_funs, ...)
+      filePath %>%
+        file_parser() %>%
+        feature_funs() %>%
+        dplyr::mutate(
+          recordId = recordId,
+          fileColumnName = fileColumnName) %>%
+        dplyr::select(recordId,
+                      fileColumnName,
+                      everything())})
+  data %>%
+    dplyr::select(
+      all_of(c("recordId",
+               "fileColumnName"))) %>%
+    dplyr::left_join(
+      features, by = c("recordId", "fileColumnName"))
 }
 
 

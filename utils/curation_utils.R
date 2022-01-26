@@ -1,45 +1,17 @@
-#' Utility feature extraction function to
-#' map based on file column name and recordId
-#' (inherited from get_table())
+###############################################################
+#' Collection of script to clean synapse table metadata and 
+#' raw sensor features
 #' 
-#' @param data
-#' @return dataframe/tibble tapping features
-map_feature_extraction <- function(data, 
-                                   file_parser, 
-                                   feature_funs,
-                                   ...){
-    features <- furrr::future_pmap_dfr(
-        list(recordId = data$recordId,
-             fileColumnName = data$fileColumnName,
-             filePath = data$filePath),
-        file_parser = file_parser,
-        feature_funs = feature_funs,
-        function(recordId,
-                 fileColumnName,
-                 filePath,
-                 file_parser,
-                 feature_funs){
-            file_parser <- partial(file_parser)
-            feature_funs <- partial(feature_funs, ...)
-            filePath %>%
-                file_parser() %>%
-                feature_funs() %>%
-                dplyr::mutate(
-                    recordId = recordId,
-                    fileColumnName = fileColumnName) %>%
-                dplyr::select(recordId,
-                              fileColumnName,
-                              everything())})
-    data %>%
-        dplyr::select(
-            all_of(c("recordId",
-                     "fileColumnName"))) %>%
-        dplyr::left_join(
-            features, by = c("recordId", "fileColumnName"))
-}
+#' @author: aryton.tediarjo@sagebase.org
+####################################################################
 
-
-
+#' Function to normalize timestamp
+#' by detecting whether median of the
+#' timestamp is in ms and then convert 
+#' it into seconds
+#' 
+#' @param data dataframe
+#' @return time-series in seconds interval
 normalize_timestamp <- function(data){
     if(median(data$t) > 1000){
         data <- data %>% 
@@ -49,7 +21,8 @@ normalize_timestamp <- function(data){
                dplyr::arrange(t))
 }
 
-
+#' Function to curate app version
+#' parse appVersion to version and build
 curate_app_version <- function(data){
     data %>% 
         tidyr::separate(appVersion, 
@@ -59,7 +32,7 @@ curate_app_version <- function(data){
         dplyr::select(-appVersion)
 }
 
-
+#' Function to clean group versions
 curate_version_group <- function(data){
     data %>%
         dplyr::mutate(version_group = case_when(
@@ -78,7 +51,7 @@ curate_version_group <- function(data){
 }
 
 
-
+#' Function to parse medTimepoint
 curate_med_timepoint <- function(data){
     if("answers.medicationTiming" %in% names(data)){
         data %>% 
@@ -89,6 +62,7 @@ curate_med_timepoint <- function(data){
     }
 }
 
+# Function to simplify phoneInformation
 curate_phone_info <- function(data){
     data %>%
         dplyr::mutate(phoneInfo = case_when(
@@ -111,6 +85,7 @@ curate_phone_info <- function(data){
         ))
 }
 
+#' Function to remove test users
 remove_test_user <- function(data){
     test_user <- data %>%
         dplyr::filter(str_detect(dataGroups, "test_user")) 
@@ -119,7 +94,7 @@ remove_test_user <- function(data){
         dplyr::select(-dataGroups)
 }
 
-
+#' Function to parse strings into comma-separated string
 vectorise_optparse_string <- function(opt_string){
     opt_string %>%
         stringr::str_replace_all(" ", "") %>%
@@ -127,13 +102,14 @@ vectorise_optparse_string <- function(opt_string){
         purrr::reduce(c)
 }
 
-
+#' Function to parse accelerometer data
 parse_accel_data <- function(filePath){
     jsonlite::fromJSON(filePath) %>%
         dplyr::mutate(timestamp = timestamp - .$timestamp[1]) %>%
         dplyr::select(t = timestamp, x, y, z)
 }
 
+#' Function to parse rotation rate data
 parse_rotation_data <- function(filePath){
     jsonlite::fromJSON(filePath) %>%
         dplyr::mutate(t = timestamp - .$timestamp[1],

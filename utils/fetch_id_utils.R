@@ -1,3 +1,10 @@
+###############################################################
+#' Script to get synapse ids across data pipeline
+#' utilizing Synapse File View Query
+#' 
+#' @author: aryton.tediarjo@sagebase.org
+####################################################################
+
 get_file_view_ref <- function(syn = NULL){
     template_path <- file.path("synapseformation/manuscript.yaml")
     if(is.null(syn)){
