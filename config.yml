@@ -129,7 +129,7 @@ v2:
                 processingType: "aggregation"
               provenance:
                 name: "aggregate tapping features"
-                description: "aggrete user-level"
+                description: "aggregate tapping user-level"
             - output_filename: "user_agg_mhealthtools_20_secs_tapping_features_v2.tsv"
               annotations:
                 pipelineStep: "feature processing"
@@ -140,7 +140,7 @@ v2:
                 filter: "20 seconds cutoff"
               provenance:
                 name: "aggregate tapping features"
-                description: "aggrete user-level"
+                description: "aggregate tapping (20 secs) user-level"
         walk:
             - output_filename: "user_agg_pdkit_rotation_7secs_window_walking_features_v2.tsv"
               annotations:
@@ -152,7 +152,7 @@ v2:
                 filter: "7.5-seconds window"
               provenance:
                 name: "aggregate walking (7-secs window) features"
-                description: "aggregate user-level"
+                description: "aggregate user-level for walking (7-secs window)"
             - output_filename: "user_agg_pdkit_rotation_5secs_window_walking_features_v2.tsv"
               annotations:
                 pipelineStep: "feature processing"
@@ -162,8 +162,8 @@ v2:
                 processingType: "aggregation"
                 filter: "5-seconds window"
               provenance:
-                name: "aggregate walking (7-secs window) features"
-                description: "aggregate user-level"
+                name: "aggregate walking (5-secs window) features"
+                description: "aggregate user-level for walking (5-secs window)"
         tremor:
             - output_filename: "user_agg_mhealthtools_tremor_features_v2.tsv"
               annotations:
