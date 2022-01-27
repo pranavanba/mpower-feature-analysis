@@ -14,7 +14,7 @@ library(plyr)
 library(doMC)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
-source("utils/reticulated_fetch_id_utils.R")
+source("utils/fetch_id_utils.R")
 
 synapseclient <- reticulate::import("synapseclient")
 syn <- synapseclient$Synapse()
