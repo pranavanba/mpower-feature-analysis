@@ -163,7 +163,7 @@ get_metadata <- function(tbl_id, syn){
 main <- function(){
     refs <- config::get("feature_processing")$tremor
     annotations_map <- SYN_ID_REF$feature_extraction %>% 
-        reticulated_get_annotation_mapper()
+        reticulated_get_annotation_mapper(syn = syn)
     metadata <- get_metadata(SYN_ID_REF$table, syn = syn)
     demo <- syn$get(SYN_ID_REF$feature_extraction$demo)$path %>%
         fread(.) %>%

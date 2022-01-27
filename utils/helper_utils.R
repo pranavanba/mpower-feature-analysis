@@ -203,7 +203,7 @@ get_annotation_mapper <- function(refs){
 #' 
 #' @param refs takes in reference of synapseIDS
 #' @return tibble of each synapseID and key annotationss
-reticulated_get_annotation_mapper <- function(refs){
+reticulated_get_annotation_mapper <- function(refs, syn){
   refs %>% 
     purrr::list_modify("parent_id" = NULL) %>% 
     purrr::map_dfr(function(x){
