@@ -35,11 +35,11 @@ docker ps -a
 ```
 #### b. Fetch the container ID from `docker build` tags, and pass it to:
 ```zsh
-docker exec -it <CONTAINER_ID>\
-Rscript 'utils/authenticate.R'\
+docker make authenticate\
+PARAMS="utils/authenticate.R\
   -u <SYNAPSE_USERNAME>\
   -p <SYNAPSE_PASSW>\
-  -g <GITHUB_TOKEN>
+  -g <GITHUB_TOKEN>"
 ```
 This will create an environment with your necessary credentials to run the analysis.
 
