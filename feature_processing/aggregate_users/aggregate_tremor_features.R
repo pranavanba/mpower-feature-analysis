@@ -28,7 +28,7 @@ SYN_ID_REF <- list(
 PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
 SCRIPT_PATH <- file.path(
     "feature_processing", 
-    "tremor",
+    "aggregate_users",
     "aggregate_tremor_features.R")
 GIT_URL = get_github_url(
     git_token_path = config::get("git")$token_path,
