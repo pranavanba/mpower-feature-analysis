@@ -1,6 +1,6 @@
-# Feature Extraction - Wiki Page
+# Features - Processed - Wiki Page
 
-This wiki page is used to describe the features extracted for all mpower actvities
+This wiki page is used to describe the extracted features that have gone through some processing (cleaning, feature reducton or aggregation) for all mpower actvities
 
 * Wiki Info
 * Feature Documentation
