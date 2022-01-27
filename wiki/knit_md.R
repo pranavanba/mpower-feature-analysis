@@ -26,5 +26,14 @@ knit2synapse::createAndKnitToFolderEntity(
     folderName = "Features - Extracted")
 
 
+# knit wiki page
+knit2synapse::createAndKnitToFolderEntity(
+    file = "wiki/generate_feature_processed_wiki.Rmd",
+    parentId = project_id, 
+    wikiName = "Feature Processed",
+    folderName = "Features - Processed")
+
+
+
 # clean all cache
 clean_cache()
