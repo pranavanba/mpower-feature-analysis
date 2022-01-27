@@ -7,7 +7,7 @@ authenticate:
 	Rscript utils/authenticate.R ${PARAMS}
 	
 project:
-	. env/bin/activate && python3 synapseformation/create_project.py
+	~/env/bin/activate && python3 synapseformation/create_project.py
 
 features:
 	Rscript feature_extraction/extract_demographics.R || exit 1

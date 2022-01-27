@@ -135,8 +135,7 @@ def main():
     if project_id == '':
         create_project(syn, template_path, project_name)
         project_id = get_project_id(syn, project_name)
-
-    create_file_view(project_id)
+        create_file_view(project_id)
 
 if __name__ == "__main__":
     main()
