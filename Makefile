@@ -1,4 +1,7 @@
-rerun: project features aggregate documentation
+rerun: update project features aggregate documentation
+
+update:
+	git pull
 
 authenticate:
 	Rscript utils/authenticate.R ${PARAMS}
