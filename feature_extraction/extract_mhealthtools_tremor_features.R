@@ -31,7 +31,6 @@ PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
 TREMOR_TABLE <- SYN_ID_REF$table
 SCRIPT_PATH <- file.path(
     "feature_extraction", 
-    "tremor",
     "extract_mhealthtools_tremor_features.R")
 GIT_URL = get_github_url(
     git_token_path = config::get("git")$token_path,

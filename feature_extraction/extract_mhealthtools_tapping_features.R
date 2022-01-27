@@ -15,7 +15,7 @@ library(doMC)
 library(optparse)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
-source("utils/reticulated_fetch_id_utils.R")
+source("utils/fetch_id_utils.R")
 
 #' Get Synapse Creds
 synapseclient <- reticulate::import("synapseclient")
@@ -31,7 +31,6 @@ PARENT_ID <- SYN_ID_REF$feature_extraction$parent_id
 TAP_TABLE <- SYN_ID_REF$table
 SCRIPT_PATH <- file.path(
     "feature_extraction", 
-    "tapping",
     "extract_mhealthtools_tapping_features.R")
 GIT_URL = get_github_url(
     git_token_path = config::get("git")$token_path,

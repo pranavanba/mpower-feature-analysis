@@ -22,9 +22,10 @@ CURRENT_YEAR <- lubridate::year(lubridate::now())
 SYN_ID_REF <- list(
     table = config::get("table")$demo,
     feature_extraction = get_feature_extraction_ids())
-SCRIPT_PATH <- file.path("feature_extraction", 
-                         "demographics",
-                         "get_demographics_v2.R")
+SCRIPT_PATH <- file.path(
+    "feature_extraction", 
+    "extract_demographics.R")
+MPOWER_VERSION <- Sys.getenv("R_CONFIG_ACTIVE")
 
 demo_ref <- config::get("feature_extraction")$demo[[1]]
 OUTPUT_REF <- list(
@@ -41,6 +42,49 @@ OUTPUT_REF <- list(
 ## Factor Level
 diagnosis_levels <- c("no_answer", "control", "parkinsons")
 sex_levels <- c("no_answer", "male", "female")
+
+
+#' get demographic info, average age for multiple records
+#' get most recent entry for sex, createdOn, diagnosis
+#' remove test users
+get_demographics_v1 <- function(){
+    demo <- synTableQuery(
+        glue::glue("SELECT * FROM {demo_tbl}",
+                   demo_tbl = SYN_ID_REF$table))$asDataFrame() %>% 
+        tibble::as_tibble() %>% 
+        dplyr::filter(!str_detect(dataGroups, "test")) %>%
+        dplyr::rowwise() %>%
+        dplyr::mutate(
+            sex = tolower(glue::glue_collapse(gender, sep = ",")),
+            education = glue::glue_collapse(education, sep = ","),
+            diagnosis = glue::glue_collapse(inferred_diagnosis, sep = ","),
+            diagnosis = case_when(diagnosis == TRUE ~ "parkinsons", 
+                                  diagnosis == FALSE ~ "control",
+                                  TRUE ~ "no_answer")) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(healthCode, 
+                      age, 
+                      education,
+                      sex, diagnosis, 
+                      operatingSystem, 
+                      phoneInfo) %>%
+        dplyr::mutate(
+            diagnosis = ifelse(is.na(diagnosis), "no_answer", diagnosis),
+            sex = ifelse(is.na(sex), "no_answer", sex)) %>%
+        dplyr::mutate(
+            diagnosis = factor(
+                diagnosis, order = T, levels = diagnosis_levels),
+            sex = factor(
+                sex, order = T, levels = sex_levels)) %>%
+        dplyr::group_by(healthCode) %>%
+        dplyr::summarise(age = mean(age, na.rm = TRUE),
+                         sex = max(sex),
+                         education = last(education),
+                         diagnosis = max(diagnosis),
+                         phoneInfo = last(phoneInfo),
+                         operatingSystem = last(operatingSystem))
+    return(demo)
+}
 
 #' get demographic info, average age for multiple records
 #' get most recent entry for sex, createdOn, diagnosis
@@ -84,14 +128,20 @@ get_demographics_v2 <- function(){
 
 
 main <- function(){
-    demo_v2 <- get_demographics_v2() %>% 
-        save_to_synapse(output_filename = OUTPUT_REF$filename,
-                        parent = OUTPUT_REF$parent, 
-                        annotations = OUTPUT_REF$annotations,
-                        used = SYN_ID_REF$table,
-                        executed = OUTPUT_REF$git_url,
-                        name = OUTPUT_REF$provenance$name,
-                        description = OUTPUT_REF$provenance$description)
+    if(MPOWER_VERSION == "v1"){
+        demo <- get_demographics_v1()
+    }else{
+        demo <- get_demographics_v2()
+    }
+    demo %>% 
+        save_to_synapse(
+            output_filename = OUTPUT_REF$filename,
+            parent = OUTPUT_REF$parent, 
+            annotations = OUTPUT_REF$annotations,
+            used = SYN_ID_REF$table,
+            executed = OUTPUT_REF$git_url,
+            name = OUTPUT_REF$provenance$name,
+            description = OUTPUT_REF$provenance$description)
 }
 
 main()
