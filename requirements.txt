@@ -52,6 +52,7 @@ sortedcontainers==2.4.0
 statsmodels==0.13.1
 stumpy==1.10.2
 synapseclient==2.5.1
+synapseformation==0.0.2
 tblib==1.7.0
 threadpoolctl==3.0.0
 toolz==0.11.2
