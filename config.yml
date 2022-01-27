@@ -35,7 +35,7 @@ v2:
                 name: "extract tapping features using mhealthtools"
                 description: "features are extracted as is"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 ts_cutoff: 30
             - output_filename: "mhealthtools_20_secs_tapping_features_v2.tsv"
               columns:
@@ -51,7 +51,7 @@ v2:
                 name: "extract tapping features with 20 seconds cutoff"
                 description: "adjusting to 20 seconds to align with V1"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 ts_cutoff: 20.5
         walk:
             - output_filename: "pdkit_rotation_7secs_window_walking_features_v2.tsv"
@@ -68,7 +68,7 @@ v2:
                 name: "extract walking features using pdkit-rotation"
                 description: "extract walk30secs using pdkit-rotation features with 7.5 seconds window"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 window_size: 750 # sampling rate 100
             - output_filename: "pdkit_rotation_5secs_window_walking_features_v2.tsv"
               columns:
@@ -84,7 +84,7 @@ v2:
                 name: "extract walking features using pdkit-rotation"
                 description: "extract walk30secs using pdkit-rotation features with 5 seconds window"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 window_size: 500
         tremor:
             - output_filename: "mhealthtools_tremor_features_v2.tsv"
@@ -100,7 +100,7 @@ v2:
                 name: "extract tremor features using mhealthtools"
                 description: "features are extracted using 2.5 seconds window"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 window_size: 500
         passive:
             - output_filename: "pdkit_rotation_7secs_window_passive_gait_features.tsv"
@@ -116,7 +116,7 @@ v2:
                 name: "extract passive-walking features using pdkit-rotation"
                 description: "extract passive gait using 7.5 seconds window"
               params:
-                query_condition: "LIMIT 50"
+                query_condition: NULL
                 window_size: 750 # sampling rate 100
     feature_processing:
         tap:
