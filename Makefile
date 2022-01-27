@@ -7,4 +7,3 @@ features:
 	Rscript feature_extraction/extract_pdkit_rotation_passive_features.R || exit 1
 documentation: 
 	Rscript wiki/knit_md.R
-	

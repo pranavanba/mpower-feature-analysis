@@ -17,13 +17,10 @@ RUN git pull
 
 ## python dependencies
 RUN python3 -m venv ~/env\
-    && . ~/env/bin/activate \
-    && pip install wheel\
-    && pip install psutil\
-    && pip install pyyaml\
-    && pip install synapseclient\
-    && pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git\
-    && pip install numpy==1.21
+    && . ~/env/bin/activate\
+    && python3 -m pip install -r requirements.txt\
+    && python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git\
+    && python3 -m pip install numpy==1.21
     
 ## get packages from lockfile
 ENV RENV_VERSION 0.13.2
@@ -32,7 +29,7 @@ RUN R -e "install.packages('synapser', repos=c('http://ran.synapse.org', 'http:/
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 RUN R -e "renv::init(bare = TRUE)"
 RUN R -e "renv::restore()"
-RUN R -e "renv::use_python(name = './env', type = 'virtualenv')"
+RUN R -e "renv::use_python(name = '~/env', type = 'virtualenv')"
 
 
 
