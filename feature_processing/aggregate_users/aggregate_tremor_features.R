@@ -11,6 +11,7 @@ library(data.table)
 library(furrr)
 library(future)
 source("utils/helper_utils.R")
+source("utils/curation_utils.R")
 source("utils/fetch_id_utils.R")
 
 #' login to synapse using reticulate
