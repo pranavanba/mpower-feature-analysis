@@ -63,6 +63,18 @@ get_feature_extraction_ids <- function(syn = NULL){
             pipelineStep == "feature extraction",
             task == "tremor",
             analysisType == "tremor-v2") %>% .$id
+    ref_list$walk_7.5 <- data %>%
+        dplyr::filter(
+            filter == "7.5-seconds window",
+            pipelineStep == "feature extraction",
+            task == "walking",
+            analysisType == "walk30secs-v2") %>% .$id
+    ref_list$walk_5 <- data %>%
+        dplyr::filter(
+            filter == "5-seconds window",
+            pipelineStep == "feature extraction",
+            task == "walking",
+            analysisType == "walk30secs-v2") %>% .$id
     return(ref_list)
 }
 
