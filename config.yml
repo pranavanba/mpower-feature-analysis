@@ -60,7 +60,7 @@ v2:
                 - "walk_motion.json"
               annotations:
                 pipelineStep: "feature extraction"
-                analysisType: "walking30secs-v2"
+                analysisType: "walk30secs-v2"
                 task: "walking"
                 filter: "7.5-seconds window"
                 tool: "pdkit-rotation"
@@ -76,7 +76,7 @@ v2:
                 - "walk_motion.json"
               annotations:
                 pipelineStep: "feature extraction"
-                analysisType: "walking30secs-v2"
+                analysisType: "walk30secs-v2"
                 task: "walking"
                 filter: "5-seconds window"
                 tool: "pdkit-rotation"
