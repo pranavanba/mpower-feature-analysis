@@ -6,7 +6,6 @@ This repository is used as a ETL wrapper for fetching mPower features based on d
 Here are our current supported tools in this ETL Github repository:
 - [Mhealthtools](https://github.com/Sage-Bionetworks/mhealthtools/blob/master/R/get_tapping_features.R)
 - [PDKit](https://github.com/pdkit/pdkit)
-- [Mpowertools](https://github.com/Sage-Bionetworks/mpowertools)
 
 ### Setting up Environment
 This repository will be using Docker and [R's Renv package management](https://rstudio.github.io/renv/articles/renv.html) to create the environment. 
