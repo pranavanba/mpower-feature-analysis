@@ -1,5 +1,9 @@
 # mPower Feature Analysis ETL
-Maintainter: aryton.tediarjo@sagebase.org, larssono@sagebase.org
+This Github Repository is used for running Dockerized MPower ETL Processes, it manages your python/R environment and streamlines worfklow from feature-extraction, aggregation, analysis, and prediction
+
+Maintainter: 
+1. meghasyam@sagebase.org
+2. aryton.tediarjo@sagebase.org (Retired as of 28th Jan 2022)
 
 ### About
 This repository is used as a ETL wrapper for fetching mPower features based on different feature extraction tools. 
@@ -7,42 +11,40 @@ Here are our current supported tools in this ETL Github repository:
 - [Mhealthtools](https://github.com/Sage-Bionetworks/mhealthtools/blob/master/R/get_tapping_features.R)
 - [PDKit](https://github.com/pdkit/pdkit)
 
-### Setting up Environment
-This repository will be using Docker and [R's Renv package management](https://rstudio.github.io/renv/articles/renv.html) to create the environment. 
-Note: Repo version will be updated alongside any changes in the Docker Image
+## Running in Docker (Recommended):
+Docker image is designed to build R & Python Environment and deployed in a container. Environment in R uses `renv` and Python `virtualenv` package management.  
 
-#### 1. Clone Repository
+### 1. Clone the repository: 
 ```zsh
-git clone https://github.com/arytontediarjo/mpower-feature-analysis.git <PROJECT_NAME>
-cd <PROJECT_NAME>
-docker build --no-cache -t <IMAGE_NAME> .
+git clone https://github.com/Sage-Bionetworks/mpower-feature-analysis.git
 ```
-
-#### 2. Create Container Resources
+### 2. Build Image:
 ```zsh
-docker -d run <IMAGE_NAME> 
+docker build -t 'mpower-feature-analysis' .
 ```
+### 3. Run Image as Container:
+```zsh
+docker run -itd mpower-feature-analysis
+```
+Notes: Argument -itd is used to make sure that container is run in detached mode (not removed after running once)
 
-#### 3. Caching Credentials
-We will be using two authentication processes that will be done:
-- Synapse Authentication
-- Github Authentication
-
-#### a. Check your container ID
+### 4. Execute Container:
+#### Check Container ID:
 ```zsh
 docker ps -a
 ```
-#### b. Fetch the container ID from `docker build` tags, and pass it to:
+Using this command, it will output container that contains the saved image. Fetch the container ID to proceed.
+
+#### Fetch container ID and create Synapse Authentication:
 ```zsh
-docker make authenticate\
-PARAMS="utils/authenticate.R\
-  -u <SYNAPSE_USERNAME>\
-  -p <SYNAPSE_PASSW>\
-  -g <GITHUB_TOKEN>"
+docker exec -it <CONTAINER_ID> make authenticate PARAMS="-u <username> -p <password> -g <git_token>"
 ```
-This will create an environment with your necessary credentials to run the analysis.
 
 
-#### 4. Running the Analysis
-To be Updated with Nextflow
+#### Use same container ID and use Makefile to rerun workflow:
+```zsh
+docker exec -it <CONTAINER_ID> make rerun
+```
 
+## Contributing Docs:
+Guidelines to contribute to this Github Repository will be documented in [`/docs`](https://github.com/Sage-Bionetworks/mpower-feature-analysis/tree/master/docs)
