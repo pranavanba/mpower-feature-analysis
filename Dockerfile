@@ -7,7 +7,7 @@ RUN apt-get update -y\
     && apt-get install -y git
     
 ## run git cloning
-RUN git clone https://github.com/arytontediarjo/mpower-feature-analysis /root/mpower-feature-analysis
+RUN git clone https://github.com/Sage-Bionetworks/mpower-feature-analysis /root/mpower-feature-analysis
 
 ## change work dir
 WORKDIR /root/mpower-feature-analysis
