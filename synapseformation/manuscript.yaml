@@ -1,4 +1,4 @@
-- name: mPower2.0-Features-Test
+- name: mPower2.0 Project
   type: Project
   acl:
   - principal_id: 3394042 # Aryton Tediarjo
@@ -23,4 +23,6 @@
   - name: Intermediate Files
     type: Folder
   - name: Figures
+    type: Folder
+  - name: Miscellaneous
     type: Folder
