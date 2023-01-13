@@ -97,7 +97,7 @@ pd.stats <- tremor.tbl %>%
   unique()
 
 # mpower 2 features
-ftrs <- synapser::synGet('syn12118186')$path %>%
+ftrs <- synapser::synGet('syn12118186')$path %>% # change to mpower 2 features (syn50559969) after debug
   data.table::fread() %>% 
   dplyr::left_join(pd.stats) %>% 
   tidyr::gather(feature, value, -recordId, -healthCode, -PD) %>%
