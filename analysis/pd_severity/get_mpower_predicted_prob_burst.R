@@ -5,8 +5,7 @@ library(githubr)
 library(tidyverse)
 source("utils/curation_utils.R")
 source("utils/helper_utils.R")
-synapser::synLogin(Sys.getenv('synapseUsername'),Sys.getenv('synapsePassword'), rememberMe = TRUE)
-
+synapser::synLogin()
 
 ## Required functions
 getBurstInfo <- function(createdOn, healthCodeIn, ref.dat){
@@ -45,6 +44,7 @@ all.tap.act <- all.burst.act.tbl %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(burst = getBurstInfo(createdOn, healthCode, burst_info)) %>% 
   dplyr::ungroup()
+  
 
 ## healthCodes with multiple bursts
 tap.hc.burst <- all.tap.act %>% 
@@ -148,6 +148,19 @@ tap.test <- tap.test %>%
     dplyr::mutate(healthCodeOrig = healthCode) %>% 
     dplyr::mutate(healthCode = healthCodeBurst)
 
+## Get number of records per burst for walk, tap etc.,
+tap.burst.metrics <- tap.test %>% 
+  dplyr::select(healthCode, recordId, burst) %>% 
+  unique() %>% 
+  # dplyr::filter(!is.na(burst)) %>% 
+  dplyr::group_by(healthCode, burst) %>% 
+  dplyr::count() %>% 
+  dplyr::rename(nTapRecords = n) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(burst = ifelse(is.na(burst),'NA',burst)) %>% 
+  dplyr::ungroup()
+
 
 tap.test <- GetCollapsedFeaturesmPower2(
     dat = tap.test, featNames = tap.features)
@@ -162,13 +175,17 @@ pred.tap.rf <- GetRfPrediction(dat.train = tap.train,
     dplyr::select(healthCode = name, tap = value)
 
 pred.tap.rf <- pred.tap.rf %>% 
+  dplyr::left_join(tap.burst.metrics) %>% 
   dplyr::rename(healthCodeMix = healthCode) %>% 
   dplyr::rowwise() %>% 
   dplyr::mutate(healthCode = strsplit(healthCodeMix,'\\|\\|')[[1]][1]) %>% 
   dplyr::mutate(burst = strsplit(healthCodeMix,'\\|\\|')[[1]][2]) %>% 
   dplyr::ungroup() %>% 
-  dplyr::select(-healthCodeMix) %>% 
-  dplyr::filter(burst != 'NA') # remove non-burst data
+  dplyr::select(-healthCodeMix) 
+
+
+# %>% 
+#   dplyr::filter(burst != 'NA') # remove non-burst data
   
 
 write.csv(pred.tap.rf, 'tapping_pred_burst.csv')
@@ -208,6 +225,20 @@ wal.test <- wal.test %>%
   dplyr::mutate(healthCodeOrig = healthCode) %>% 
   dplyr::mutate(healthCode = healthCodeBurst)
 
+## Get number of records per burst for walk, tap etc.,
+wal.burst.metrics <- wal.test %>% 
+  dplyr::select(healthCode, recordId, burst) %>% 
+  unique() %>% 
+  # dplyr::filter(!is.na(burst)) %>% 
+  dplyr::group_by(healthCode, burst) %>% 
+  dplyr::count() %>% 
+  dplyr::rename(nWalRecords = n) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(burst = ifelse(is.na(burst),'NA',burst)) %>% 
+  dplyr::ungroup()
+
+
 wal.test <- GetCollapsedFeaturesmPower2(
     dat = wal.test, 
     featNames = wal.features)
@@ -222,31 +253,53 @@ pred.wal.rf <- GetRfPrediction(dat.train = wal.train,
     dplyr::select(healthCode = name, walk = value)
 
 pred.wal.rf <- pred.wal.rf %>% 
+  dplyr::left_join(wal.burst.metrics) %>% 
   dplyr::rename(healthCodeMix = healthCode) %>% 
   dplyr::rowwise() %>% 
   dplyr::mutate(healthCode = strsplit(healthCodeMix,'\\|\\|')[[1]][1]) %>% 
   dplyr::mutate(burst = strsplit(healthCodeMix,'\\|\\|')[[1]][2]) %>% 
   dplyr::ungroup() %>% 
-  dplyr::select(-healthCodeMix) %>% 
-  na.omit() # remove non-burst data
+  dplyr::select(-healthCodeMix) 
+
+# %>% 
+#   na.omit() # remove non-burst data
+
+write.csv(pred.wal.rf, 'walking_pred_burst.csv')
+
+###########################################
+#' Tremor severity scores (mPTS)
+###########################################
+mPTS <- synapser::synGet('syn51189982')$path %>% 
+  read.csv(sep = '\t', stringsAsFactors = F) %>% 
+  dplyr::group_by(healthCode, burst) %>% 
+  dplyr::mutate(nTremorRecords = n()) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(healthCode, burst, nTremorRecords) %>% 
+  dplyr::summarise(mPTS = median(mPTS)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(burst = ifelse(is.na(burst),'NA',burst)) %>% 
+  dplyr::ungroup()
 
 
 ###########################################
 #' Merge results
 ###########################################
 demo <- fread(synGet(demo_id)$path)
-pred_list <- list(pred.tap.rf, pred.wal.rf)
+pred_list <- list(pred.tap.rf, pred.wal.rf, mPTS)
 pd.severity <- pred_list %>%
     purrr::reduce(dplyr::full_join) %>%
     dplyr::rowwise() %>%
-    dplyr::mutate(
-        mean_conf_score = mean(
-            c_across(where(is.numeric)), 
-            na.rm = T)) %>%
+    dplyr::mutate(mean_conf_score = mean(c(tap,`walk`, mPTS), na.rm = T)) %>%
+    dplyr::mutate(burst = ifelse(burst == 'NA','out_of_burst',burst)) %>% 
     dplyr::ungroup() %>%
-    dplyr::inner_join(demo %>%
-                          dplyr::select(healthCode, externalId)) %>%
-    dplyr::select(healthCode, externalId, everything())
+    # dplyr::inner_join(demo %>%
+    #                       dplyr::select(healthCode, externalId)) %>%
+    dplyr::select(healthCode, everything()) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(has_all_three = ifelse(!(is.na(tap)||is.na(walk)||is.na(mPTS)), TRUE, FALSE),
+                has_atleast_two = (((!is.na(tap))+(!is.na(walk))+(!is.na(mPTS))) >1)) %>% 
+  dplyr::ungroup()
 
 
 # save to synapse
@@ -258,7 +311,4 @@ save_to_synapse(
     name = OUTPUT_REF$name,
     description = OUTPUT_REF$description,
     used = OUTPUT_REF$used)
-
-
-
 
