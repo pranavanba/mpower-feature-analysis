@@ -27,8 +27,8 @@ RUN python3 -m venv ~/env\
 ENV RENV_VERSION 0.13.2
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
 RUN R -e "install.packages('reticulate')"
-RUN R -e "reticulate::install_python('3.8:latest')"
-RUN R -e "reticulate::virtualenv_create('r-reticulate', version = '3.8:latest')"
+RUN R -e "reticulate::install_python('3.8')"
+RUN R -e "reticulate::virtualenv_create('r-reticulate', version = '3.8')"
 RUN R -e "reticulate::use_virtualenv('r-reticulate')"
 RUN R -e "install.packages('synapser', repos=c('http://ran.synapse.org', 'http://cran.fhcrc.org'))"
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
