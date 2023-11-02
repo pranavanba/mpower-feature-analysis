@@ -18,6 +18,7 @@ RUN git pull
 ## python dependencies
 RUN python3 -m venv ~/env\
     && . ~/env/bin/activate\
+    && python3 -m pip install wheel\
     && python3 -m pip install -r requirements.txt\
     && python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git\
     && python3 -m pip install numpy==1.21
