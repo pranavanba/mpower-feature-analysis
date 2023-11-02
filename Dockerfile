@@ -26,8 +26,8 @@ RUN python3 -m venv ~/env\
 ## get packages from lockfile
 ENV RENV_VERSION 0.13.2
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
-RUN R -e 'install.packages("reticulate")'
-RUN R -e 'reticulate::install_miniconda()'
+RUN R -e "install.packages('reticulate')"
+RUN R -e "reticulate::install_python(version = '3.8')"
 RUN R -e "install.packages('synapser', repos=c('http://ran.synapse.org', 'http://cran.fhcrc.org'))"
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 RUN R -e "renv::init(bare = TRUE)"
