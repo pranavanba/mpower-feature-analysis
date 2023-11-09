@@ -22,7 +22,7 @@ RUN python3 -m venv ~/env\
     && python3 -m pip install -r requirements.txt\
     && python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git\
     && python3 -m pip install numpy==1.21\
-    && python3 -m pip install --user virtualenv
+    && python3 -m pip install virtualenv
     
 ## get packages from lockfile
 ENV RENV_VERSION 0.13.2
