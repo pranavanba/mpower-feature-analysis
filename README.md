@@ -1,9 +1,10 @@
 # mPower Feature Analysis ETL
 This Github Repository is used for running Dockerized MPower ETL Processes, it manages your python/R environment and streamlines worfklow from feature-extraction, aggregation, analysis, and prediction
 
-Maintainter: 
-1. meghasyam@sagebase.org
-2. aryton.tediarjo@sagebase.org (Retired as of 28th Jan 2022)
+Maintainer: 
+1. pranav.anbarasu@sagebase.org
+2. meghasyam@sagebase.or
+3. aryton.tediarjo@sagebase.org (Retired as of 28th Jan 2022)
 
 ### About
 This repository is used as a ETL wrapper for fetching mPower features based on different feature extraction tools. 
