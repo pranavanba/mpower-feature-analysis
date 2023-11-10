@@ -3,7 +3,7 @@ This Github Repository is used for running Dockerized MPower ETL Processes, it m
 
 Maintainer: 
 1. pranav.anbarasu@sagebase.org
-2. meghasyam@sagebase.or
+2. meghasyam@sagebase.org
 3. aryton.tediarjo@sagebase.org (Retired as of 28th Jan 2022)
 
 ### About
