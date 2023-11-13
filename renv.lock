@@ -820,19 +820,6 @@
       "Repository": "CRAN",
       "Hash": "93cc747b0e1ad882a4570463c3575c23"
     },
-    "mhealthtools": {
-      "Package": "mhealthtools",
-      "Version": "0.2.1",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "Sage-Bionetworks",
-      "RemoteRepo": "mhealthtools",
-      "RemoteRef": "master",
-      "RemoteSha": "4340b82fce2aef66ba445f81515749aa1cf599c3",
-      "Remotes": "cran/statcomp,",
-      "Hash": "524e4a24608c380769ea253d68107826"
-    },
     "mime": {
       "Package": "mime",
       "Version": "0.11",
@@ -1243,19 +1230,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "1abde1bf414425ea288fd9e277d6e410"
-    },
-    "statcomp": {
-      "Package": "statcomp",
-      "Version": "0.1.0",
-      "Source": "GitHub",
-      "Repository": "CRAN",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "cran",
-      "RemoteRepo": "statcomp",
-      "RemoteRef": "master",
-      "RemoteSha": "6d34a467d90f37b6acd84996d35058b83f737a8f",
-      "Hash": "848d1f315951c2966d3002558b44c09c"
     },
     "stringi": {
       "Package": "stringi",
