@@ -33,6 +33,6 @@ RUN R -e "install.packages('synapser', repos=c('http://ran.synapse.org', 'http:/
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 RUN R -e "renv::init(bare = TRUE)"
 RUN R -e "install.packages('statcomp')"
-RUN R -e "devtools::install_github('Sage-Bionetworks/mhealthtools', dependencies = TRUE)"
+RUN R -e "remotes::install_github('Sage-Bionetworks/mhealthtools', dependencies = TRUE)"
 RUN R -e "renv::restore()"
 RUN R -e "renv::use_python(name = '~/env', type = 'virtualenv')"
