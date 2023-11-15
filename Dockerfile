@@ -28,11 +28,10 @@ RUN python3 -m venv ~/env\
     
 ## get packages from lockfile
 ENV RENV_VERSION 0.13.2
+RUN R -e "install.packages('devtools')"
+RUN R -e "devtools::install_github("Sage-Bionetworks/mhealthtools")"
 RUN R -e "install.packages('remotes', repos = c(CRAN = 'https://cloud.r-project.org'))"
 RUN R -e "remotes::install_github('rstudio/renv@${RENV_VERSION}')"
 RUN R -e "renv::init(bare = TRUE)"
 RUN R -e "renv::restore()"
-RUN R -e "renv::install('statcomp')"
-RUN R -e "renv::install('remotes')"
-RUN R -e "remotes::install_github('Sage-Bionetworks/mhealthtools')"
 RUN R -e "renv::use_python(name = '~/env', type = 'virtualenv')"
