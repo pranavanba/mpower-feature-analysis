@@ -3,7 +3,7 @@ default:
         repo_endpoint: "pranavanba/mpower-feature-analysis"
         token_path: "~/git_token.txt"
     cpu:
-        n_cores: NULL
+        n_cores: 8
 v2:
     table:
         demo: "syn15673379"
