@@ -15,14 +15,14 @@ WORKDIR /root/mpower-feature-analysis
 RUN git pull
 
 ## Python dependencies
-RUN python3 -m pip install synapseclient
 RUN python3 -m pip install --user virtualenv
 
 RUN python3 -m venv ~/env && \
-    . ~/env/bin/activate && \
-    python3 -m pip install wheel && \
-    python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git && \
-    python3 -m pip install numpy
+    . ~/env/bin/activate
+
+RUN python3 -m pip install synapseclient
+RUN python3 -m pip install wheel
+RUN python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
 
 ## Install R packages
 RUN R -e 'install.packages("reticulate")'
