@@ -17,11 +17,12 @@ RUN git pull
 ## Python dependencies
 RUN python3 -m pip install --user virtualenv
 
-RUN python3 -m venv ~/env && \
+RUN python3 -m virtualenv ~/env && \
     . ~/env/bin/activate
 
 RUN python3 -m pip install synapseclient
 RUN python3 -m pip install wheel
+RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
 
 ## Install R packages
