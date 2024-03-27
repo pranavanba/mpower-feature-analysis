@@ -1,5 +1,5 @@
 # build base image
-FROM rocker/tidyverse:4.3.3
+FROM rocker/tidyverse:4.0.0
 
 RUN apt-get update -y && \
     apt-get upgrade -y && \
@@ -22,7 +22,6 @@ RUN python3 -m virtualenv ~/env && \
 
 RUN python3 -m pip install synapseclient
 RUN python3 -m pip install wheel
-RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install git+https://github.com/arytontediarjo/PDKitRotationFeatures.git
 
 ## Install R packages
