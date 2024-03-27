@@ -6,7 +6,7 @@ RUN apt-get update -y && \
     apt-get install -y python3 python3-venv python3-pip git
     
 ## Clone git repo
-RUN git clone https://github.com/pranavanba/mpower-feature-analysis ~/mpower-feature-analysis
+RUN git clone https://github.com/pranavanba/mpower-feature-analysis
 
 ## Change work dir
 WORKDIR ~/mpower-feature-analysis
