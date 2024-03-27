@@ -9,7 +9,7 @@ RUN apt-get update -y && \
 RUN git clone https://github.com/pranavanba/mpower-feature-analysis
 
 ## Change work dir
-WORKDIR ~/mpower-feature-analysis
+WORKDIR mpower-feature-analysis
 
 ## Pull updates
 RUN git pull
