@@ -29,4 +29,5 @@ RUN R -e 'install.packages("reticulate")'
 RUN R -e 'install.packages("synapser", repos = c("http://ran.synapse.org", "http://cran.fhcrc.org"))'
 RUN R -e "install.packages('remotes')"
 RUN R -e "remotes::install_github('Sage-Bionetworks/mhealthtools', force = TRUE)"
+RUN R -e "install.packages('renv')"
 RUN R -e "renv::use_python(name = '~/env', type = 'virtualenv')"
