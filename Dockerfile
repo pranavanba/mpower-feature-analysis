@@ -17,7 +17,7 @@ RUN git pull
 ## Python dependencies
 RUN python3 -m pip install --user virtualenv
 
-RUN python3 -m virtualenv ~/env && \
+RUN python3 -m venv ~/env && \
     . ~/env/bin/activate
 
 RUN python3 -m pip install synapseclient
