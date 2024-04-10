@@ -45,7 +45,7 @@ get_metadata <- function(tbl_id){
 
 main <- function(){
     refs <- config::get("feature_processing")$tap
-    annotations_map <- SYN_ID_REF$feature_extraction %>% 
+    annotations_map <- SYN_ID_REF$feature_extraction[names(SYN_ID_REF$feature_extraction)!="parent_id"] %>% 
         get_annotation_mapper()
     metadata <- get_metadata(SYN_ID_REF$table)
     demo <- synGet(SYN_ID_REF$feature_extraction$demo)$path %>%
